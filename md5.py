@@ -74,12 +74,10 @@ def compress(ihv, message):
 
 
 def cls(a, rc):
-    a &= 0xFFFFFFFF
     return (((a << rc) & 0xFFFFFFFF) | (a >> (INT_BITS - rc))) & 0xFFFFFFFF
 
 
 def crs(a, rc):
-    a &= 0xFFFFFFFF
     return (a >> rc) | ((a << (INT_BITS - rc)) & 0xFFFFFFFF)
 
 
@@ -102,8 +100,9 @@ def md5_step(f, a, b, c, d, word, ac, rc):
 
 
 def md5_reverse_step(t, Q, ac, rc):
-    word = (Q[3 + t + 1] - Q[3 + t]) % 0xFFFFFFFF
-    word = (crs(word, rc) - F(Q[3 + t], Q[3 + t - 1], Q[3 + t - 2]) - Q[3 + t - 3] - ac) % 0xFFFFFFFF
+    word = (Q[3 + t + 1] - Q[3 + t]) % (1 << 32)
+    #print(f"First step word: {word}")
+    word = (crs(word, rc) - F(Q[3 + t], Q[3 + t - 1], Q[3 + t - 2]) - Q[3 + t - 3] - ac) % (1 << 32)
     return word
 
 

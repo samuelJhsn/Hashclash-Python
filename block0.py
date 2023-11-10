@@ -1,10 +1,8 @@
 import random
-
 import md5
 
 
 def find_block0(IV):
-    superCounter = 0
 
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
@@ -20,7 +18,6 @@ def find_block0(IV):
               for k in range(len(q9mask))]
 
     while True:
-        superCounter += 1
         Q[4] = random.randrange(0, (2 ** 32))
         Q[6] = (random.randrange(0, (2 ** 32)) & 0xfe87bc3f) | 0x017841c0
         Q[7] = (random.randrange(0, (2 ** 32)) & 0x44000033) | 0x000002c0 | (Q[6] & 0x0287bc00)
@@ -37,7 +34,9 @@ def find_block0(IV):
         Q[18] = (random.randrange(0, (2 ** 32)) & 0x5efe7ff7) | 0x80008000 | (~Q[17] & 0x00010000)
         Q[19] = (random.randrange(0, (2 ** 32)) & 0x1ffdffff) | 0xa0000000 | (~Q[18] & 0x40020000)
 
+        #print(f"Block[0] before: {block[0]}")
         block[0] = md5.md5_reverse_step(0, Q, 0xd76aa478, 7)
+        #print(f"Block[0] after: {block[0]}")
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
         block[7] = md5.md5_reverse_step(7, Q, 0xfd469501, 22)
         block[11] = md5.md5_reverse_step(11, Q, 0x895cd7be, 22)
@@ -49,7 +48,7 @@ def find_block0(IV):
         tt18 = (Q[17] + 0xc040b340 + block[6]) & 0xFFFFFFFF
         tt19 = (Q[18] + 0x265e5a51 + block[11]) & 0xFFFFFFFF
         tt20 = (Q[19] + 0xe9b6c7aa + block[0]) & 0xFFFFFFFF
-        tt5 = (md5.crs((Q[9] - Q[8] % 0xFFFFFFFF), 12) - md5.F(Q[8], Q[7], Q[6]) - 0x4787c62a) % 0xFFFFFFFF
+        tt5 = (md5.crs((Q[9] - Q[8] % (1 << 32)), 12) - md5.F(Q[8], Q[7], Q[6]) - 0x4787c62a) % (1 << 32)
 
         # change q17 until conditions are met on q18, q19 and q20
         counter = 0
@@ -75,12 +74,12 @@ def find_block0(IV):
             if 0x00040000 != ((q20 ^ q19) & 0x80040000):
                 continue
 
-            block[1] = (q17 - q16) % 0xFFFFFFFF
-            block[1] = (md5.crs(block[1], 5) - tt17) % 0xFFFFFFFF
+            block[1] = (q17 - q16) % (1 << 32)
+            block[1] = (md5.crs(block[1], 5) - tt17) % (1 << 32)
 
             q2 = (block[1] + tt1) & 0xFFFFFFFF
             q2 = (md5.cls(q2, 12) + Q[4]) & 0xFFFFFFFF
-            block[5] = (tt5 - q2) % 0xFFFFFFFF
+            block[5] = (tt5 - q2) % (1 << 32)
 
             Q[5] = q2
             Q[20] = q17
@@ -128,9 +127,9 @@ def find_block0(IV):
             tt9 = (Q[9] + 0x8b44f7af) & 0xFFFFFFFF
             tt10 = (Q[10] + 0xffff5bb1) & 0xFFFFFFFF
             tt8 = (md5.F(Q[11], Q[10], Q[9]) + Q[8] + 0x698098d8) & 0xFFFFFFFF
-            tt12 = (md5.crs((Q[16] - Q[15]) % 0xFFFFFFFF, 7) - 0x6b901122) % 0xFFFFFFFF
-            tt13 = ((md5.crs((Q[17] - Q[16]) % 0xFFFFFFFF, 12) - md5.F(Q[16], Q[15], Q[14]) % 0xFFFFFFFF)
-                    - 0xfd987193) % 0xFFFFFFFF
+            tt12 = (md5.crs((Q[16] - Q[15]) % (1 << 32), 7) - 0x6b901122) % (1 << 32)
+            tt13 = ((md5.crs((Q[17] - Q[16]) % (1 << 32), 12) - md5.F(Q[16], Q[15], Q[14]) % (1 << 32))
+                    - 0xfd987193) % (1 << 32)
 
             # iterate over possible changes of q9 and q10
             # while keeping conditions on q1-q21 intact
@@ -142,7 +141,7 @@ def find_block0(IV):
                 Q[12] = q9backup ^ (q9q10mask[counter3] & 0x2000)
                 counter3 += 1
 
-                m10 = ((md5.crs((Q[14] - q10) % 0xFFFFFFFF, 17) - md5.F(q10, Q[12], Q[11])) % 0xFFFFFFFF
+                m10 = ((md5.crs((Q[14] - q10) % (1 << 32), 17) - md5.F(q10, Q[12], Q[11])) % (1 << 32)
                        + tt10) & 0xFFFFFFFF
 
                 aa = Q[24]
@@ -171,7 +170,7 @@ def find_block0(IV):
                     continue
 
                 block[10] = m10
-                block[13] = (tt13 - q10) % 0xFFFFFFFF
+                block[13] = (tt13 - q10) % (1 << 32)
 
                 # iterate over possible changes of q9 and q10
                 # while keeping conditions on q1-q21 intact
@@ -179,13 +178,13 @@ def find_block0(IV):
                 # the possible changes of q9 that also do not change m10 are used below
                 for counter4 in range(1 << 16):
                     q9 = Q[12] ^ q9mask[counter4]
-                    block[12] = (tt12 - md5.F(Q[15], Q[14], q10) - q9) % 0xFFFFFFFF
+                    block[12] = (tt12 - md5.F(Q[15], Q[14], q10) - q9) % (1 << 32)
 
-                    m8 = (q9 - Q[11]) % 0xFFFFFFFF
-                    block[8] = (md5.crs(m8, 7) - tt8) % 0xFFFFFFFF
+                    m8 = (q9 - Q[11]) % (1 << 32)
+                    block[8] = (md5.crs(m8, 7) - tt8) % (1 << 32)
 
-                    m9 = (q10 - q9) % 0xFFFFFFFF
-                    block[9] = (md5.crs(m9, 12) - md5.F(q9, Q[11], Q[10]) - tt9) % 0xFFFFFFFF
+                    m9 = (q10 - q9) % (1 << 32)
+                    block[9] = (md5.crs(m9, 12) - md5.F(q9, Q[11], Q[10]) - tt9) % (1 << 32)
 
                     a = aa
                     b = bb

@@ -2,6 +2,7 @@ import random
 import block0
 import md5
 import hashlib
+from multiprocessing import Pool, cpu_count
 
 MD5IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
 
@@ -19,8 +20,9 @@ def test():
 
 def main():
     IV = MD5IV.copy()
-
-    collisionPairs = find_collision(IV)
+    cpuCount = int(cpu_count() / 2)
+    with Pool(cpuCount) as p:
+        p.map(find_collision, [IV] * cpuCount)
 
 
 def find_collision(IV):
