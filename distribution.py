@@ -1,5 +1,6 @@
 import hashlib
 import os
+import random
 import time
 import re
 import numpy as np
@@ -12,7 +13,11 @@ from operator import add
 
 def doHashing(compRoomStart, compRoomEnd, hashFunction):
     startGenBits = time.perf_counter()
-    bitStrings = [e.to_bytes(math.ceil(e.bit_length() / 8), byteorder='big') for e in range(compRoomStart, compRoomEnd)]
+    #bitStrings = [e.to_bytes(math.ceil(e.bit_length() / 8), byteorder='big') for e in range(compRoomStart, compRoomEnd)]
+    bitStrings = []
+    for e in range(compRoomStart, compRoomEnd):
+        randomNumba = random.randint(0, 2 ** 25)
+        bitStrings.append(randomNumba.to_bytes(math.ceil(randomNumba.bit_length() / 8), byteorder='big'))
     endGenBits = time.perf_counter()
 
     startHashing = time.perf_counter()
@@ -24,6 +29,9 @@ def doHashing(compRoomStart, compRoomEnd, hashFunction):
     #     for index, byte in enumerate(hash):
     #         bitDistribution[int(byte, 16)][index] += 1
 
+    hashesRandWalk = [(h, int(h, 16).bit_length() - int(h, 16).bit_count()) for h in hashes]  # Map each hash to pair of  itself and #bits - #1's
+    print(hashesRandWalk)
+
     bitDistribution = [0 for _ in range(8 * hashFunction().digest_size + 1)]
     hashes = [list(f'{int(h, 16):0>{8 * hashFunction().digest_size}b}') for h in hashes]
     hashes = [[int(numba) for numba in h] for h in hashes]
@@ -31,6 +39,7 @@ def doHashing(compRoomStart, compRoomEnd, hashFunction):
     startBitCount = time.perf_counter()
     for h in hashes:
         bitDistribution = list(map(add, bitDistribution, h))
+
 
     # h = f'{int(h, 16):0>42b}'
     # h = [int(x) for x in textwrap.wrap(h, 1)]

@@ -3,8 +3,8 @@ import random
 import md5
 
 
-def find_block1_stevens_11(block, IV):
-
+def find_block1_stevens_11(IV):
+    block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
     q9q10mask = [0] * 32
@@ -173,7 +173,10 @@ def find_block1_stevens_11(block, IV):
 
             for k9 in range(1 << 9):
 
-                a = aa, b = bb, c = cc, d = dd
+                a = aa
+                b = bb
+                c = cc
+                d = dd
                 Q[12] = q9 ^ q9mask[k9]
                 block[8] = md5.md5_reverse_step(8, Q, 0x698098d8, 7)
                 block[9] = md5.md5_reverse_step(9, Q, 0x8b44f7af, 12)
@@ -258,7 +261,7 @@ def find_block1_stevens_11(block, IV):
                     continue
                 b = md5.md5_step(md5.I, b, c, d, a, block[9], 0xeb86d391, 21)
 
-                print(".")
+                print(".S11")
 
                 IV1 = IV.copy()
                 IV2 = [0] * 4

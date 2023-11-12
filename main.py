@@ -1,5 +1,6 @@
 import random
 import block0
+import block1
 import md5
 import hashlib
 from multiprocessing import Pool, cpu_count
@@ -20,30 +21,31 @@ def test():
 
 def main():
     IV = MD5IV.copy()
-    cpuCount = int(cpu_count() / 2)
-    with Pool(cpuCount) as p:
+    cpuCount = int(cpu_count() / 1.5)
+    with Pool(cpuCount-5) as p:
         p.map(find_collision, [IV] * cpuCount)
+        p.terminate()
 
 
 def find_collision(IV):
     print("Generating first block: ")
     msg1_block0 = block0.find_block0(IV)
-    #
-    # print("Generating second block: ")
-    # msg1_block1 = block1.find_block1(IV)
-    #
-    # msg2_block0 = msg1_block0.copy()
-    # msg2_block1 = msg1_block1.copy()
-    #
-    # msg2_block0[4] += 1 << 31
-    # msg2_block0[11] += 1 << 15
-    # msg2_block0[14] += 1 << 31
-    # msg2_block1[4] += 1 << 31
-    # msg2_block1[11] -= 1 << 15
-    # msg2_block1[14] += 1 << 31
+
+    print("Generating second block: ")
+    msg1_block1 = block1.find_block1(IV)
+
+    msg2_block0 = msg1_block0.copy()
+    msg2_block1 = msg1_block1.copy()
+
+    msg2_block0[4] += 1 << 31
+    msg2_block0[11] += 1 << 15
+    msg2_block0[14] += 1 << 31
+    msg2_block1[4] += 1 << 31
+    msg2_block1[11] -= 1 << 15
+    msg2_block1[14] += 1 << 31
 
     print("DONE!!!")
-    # return [(msg1_block0, msg1_block1), (msg2_block0, msg2_block1)]
+    return [(msg1_block0, msg1_block1), (msg2_block0, msg2_block1)]
 
 
 if __name__ == '__main__':

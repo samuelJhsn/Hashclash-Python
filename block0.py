@@ -1,9 +1,21 @@
 import random
+import time
+
 import md5
+
+seed32_1 = int(time.time()) & 0xFFFFFFFF
+seed32_2 = 0x12345678
+
+def xrng64():
+    global seed32_1
+    global seed32_2
+    t = (seed32_1 ^ (seed32_1 << 10)) & 0xFFFFFFFF
+    seed32_1 = seed32_2
+    seed32_2 = ((seed32_2 ^ (seed32_2 >> 10)) ^ (t ^ (t >> 13))) & 0xFFFFFFFF
+    return seed32_1
 
 
 def find_block0(IV):
-
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
@@ -18,25 +30,23 @@ def find_block0(IV):
               for k in range(len(q9mask))]
 
     while True:
-        Q[4] = random.randrange(0, (2 ** 32))
-        Q[6] = (random.randrange(0, (2 ** 32)) & 0xfe87bc3f) | 0x017841c0
-        Q[7] = (random.randrange(0, (2 ** 32)) & 0x44000033) | 0x000002c0 | (Q[6] & 0x0287bc00)
+        Q[4] = xrng64()
+        Q[6] = (xrng64() & 0xfe87bc3f) | 0x017841c0
+        Q[7] = (xrng64() & 0x44000033) | 0x000002c0 | (Q[6] & 0x0287bc00)
         Q[8] = 0x41ffffc8 | (Q[7] & 0x04000033)
         Q[9] = 0xb84b82d6
-        Q[10] = (random.randrange(0, (2 ** 32)) & 0x68000084) | 0x02401b43
-        Q[11] = (random.randrange(0, (2 ** 32)) & 0x2b8f6e04) | 0x005090d3 | (~Q[10] & 0x40000000)
+        Q[10] = (xrng64() & 0x68000084) | 0x02401b43
+        Q[11] = (xrng64() & 0x2b8f6e04) | 0x005090d3 | (~Q[10] & 0x40000000)
         Q[12] = 0x20040068 | (Q[11] & 0x00020000) | (~Q[11] & 0x40000000)
-        Q[13] = (random.randrange(0, (2 ** 32)) & 0x40000000) | 0x1040b089
-        Q[14] = (random.randrange(0, (2 ** 32)) & 0x10408008) | 0x0fbb7f16 | (~Q[13] & 0x40000000)
-        Q[15] = (random.randrange(0, (2 ** 32)) & 0x1ed9df7f) | 0x00022080 | (~Q[14] & 0x40200000)
-        Q[16] = (random.randrange(0, (2 ** 32)) & 0x5efb4f77) | 0x20049008
-        Q[17] = (random.randrange(0, (2 ** 32)) & 0x1fff5f77) | 0x0000a088 | (~Q[16] & 0x40000000)
-        Q[18] = (random.randrange(0, (2 ** 32)) & 0x5efe7ff7) | 0x80008000 | (~Q[17] & 0x00010000)
-        Q[19] = (random.randrange(0, (2 ** 32)) & 0x1ffdffff) | 0xa0000000 | (~Q[18] & 0x40020000)
+        Q[13] = (xrng64() & 0x40000000) | 0x1040b089
+        Q[14] = (xrng64() & 0x10408008) | 0x0fbb7f16 | (~Q[13] & 0x40000000)
+        Q[15] = (xrng64() & 0x1ed9df7f) | 0x00022080 | (~Q[14] & 0x40200000)
+        Q[16] = (xrng64() & 0x5efb4f77) | 0x20049008
+        Q[17] = (xrng64() & 0x1fff5f77) | 0x0000a088 | (~Q[16] & 0x40000000)
+        Q[18] = (xrng64() & 0x5efe7ff7) | 0x80008000 | (~Q[17] & 0x00010000)
+        Q[19] = (xrng64() & 0x1ffdffff) | 0xa0000000 | (~Q[18] & 0x40020000)
 
-        #print(f"Block[0] before: {block[0]}")
         block[0] = md5.md5_reverse_step(0, Q, 0xd76aa478, 7)
-        #print(f"Block[0] after: {block[0]}")
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
         block[7] = md5.md5_reverse_step(7, Q, 0xfd469501, 22)
         block[11] = md5.md5_reverse_step(11, Q, 0x895cd7be, 22)
@@ -48,15 +58,14 @@ def find_block0(IV):
         tt18 = (Q[17] + 0xc040b340 + block[6]) & 0xFFFFFFFF
         tt19 = (Q[18] + 0x265e5a51 + block[11]) & 0xFFFFFFFF
         tt20 = (Q[19] + 0xe9b6c7aa + block[0]) & 0xFFFFFFFF
-        tt5 = (md5.crs((Q[9] - Q[8] % (1 << 32)), 12) - md5.F(Q[8], Q[7], Q[6]) - 0x4787c62a) % (1 << 32)
+        tt5 = (md5.crs(Q[9] - Q[8], 12) - md5.F(Q[8], Q[7], Q[6]) - 0x4787c62a) % (1 << 32)
 
-        # change q17 until conditions are met on q18, q19 and q20
         counter = 0
         while counter < (1 << 7):
 
             q16 = Q[19]
 
-            q17 = ((random.randrange(0, (2 ** 32)) & 0x3ffd7ff7) | (q16 & 0xc0008008)) ^ 0x40000000
+            q17 = ((xrng64() & 0x3ffd7ff7) | (q16 & 0xc0008008)) ^ 0x40000000
             counter += 1
 
             q18 = (md5.G(q17, q16, Q[18]) + tt18) & 0xFFFFFFFF
@@ -127,9 +136,8 @@ def find_block0(IV):
             tt9 = (Q[9] + 0x8b44f7af) & 0xFFFFFFFF
             tt10 = (Q[10] + 0xffff5bb1) & 0xFFFFFFFF
             tt8 = (md5.F(Q[11], Q[10], Q[9]) + Q[8] + 0x698098d8) & 0xFFFFFFFF
-            tt12 = (md5.crs((Q[16] - Q[15]) % (1 << 32), 7) - 0x6b901122) % (1 << 32)
-            tt13 = ((md5.crs((Q[17] - Q[16]) % (1 << 32), 12) - md5.F(Q[16], Q[15], Q[14]) % (1 << 32))
-                    - 0xfd987193) % (1 << 32)
+            tt12 = (md5.crs(Q[16] - Q[15], 7) - 0x6b901122) % (1 << 32)
+            tt13 = (md5.crs(Q[17] - Q[16], 12) - md5.F(Q[16], Q[15], Q[14]) - 0xfd987193) % (1 << 32)
 
             # iterate over possible changes of q9 and q10
             # while keeping conditions on q1-q21 intact
@@ -141,8 +149,7 @@ def find_block0(IV):
                 Q[12] = q9backup ^ (q9q10mask[counter3] & 0x2000)
                 counter3 += 1
 
-                m10 = ((md5.crs((Q[14] - q10) % (1 << 32), 17) - md5.F(q10, Q[12], Q[11])) % (1 << 32)
-                       + tt10) & 0xFFFFFFFF
+                m10 = (((md5.crs(Q[14] - q10, 17) - md5.F(q10, Q[12], Q[11])) % (1 << 32)) + tt10) & 0xFFFFFFFF
 
                 aa = Q[24]
 
@@ -186,11 +193,15 @@ def find_block0(IV):
                     m9 = (q10 - q9) % (1 << 32)
                     block[9] = (md5.crs(m9, 12) - md5.F(q9, Q[11], Q[10]) - tt9) % (1 << 32)
 
-                    a = aa
-                    b = bb
-                    c = cc
-                    d = dd
-
+                    a = aa  # 3627559892
+                    b = bb  # 2432968217
+                    c = cc  # 616638689
+                    d = dd  # 4204579324
+                    # block = [1993671307, 2624321372, 3730992812, 1033438979, 2503804030, 3100223383, 1585014303, 2108726672, 3924697483, 3908029132, 1917320687, 1718430263, 3715077253, 1433305076, 2277775929, 4210408292]
+                    # print(f"Before a: {a}")
+                    # print(f"b: {b}")
+                    # print(f"c: {c}")
+                    # print(f"d: {d}")
                     a = md5.md5_step(md5.G, a, b, c, d, block[9], 0x21e1cde6, 5)
                     d = md5.md5_step(md5.G, d, a, b, c, block[14], 0xc33707d6, 9)
                     c = md5.md5_step(md5.G, c, d, a, b, block[3], 0xf4d50d87, 14)
@@ -202,10 +213,10 @@ def find_block0(IV):
                     a = md5.md5_step(md5.H, a, b, c, d, block[5], 0xfffa3942, 4)
                     d = md5.md5_step(md5.H, d, a, b, c, block[8], 0x8771f681, 11)
 
-                    c += md5.H(d, a, b) + block[11] + 0x6d9d6122
-                    if 0 != ((c & 0xFFFFFFFF) & (1 << 15)):
+                    c = (c + md5.H(d, a, b) + block[11] + 0x6d9d6122) & 0xFFFFFFFF
+                    if 0 != (c & (1 << 15)):
                         continue
-                    c = ((c << 16 | c >> 16) + d) & 0xFFFFFFFF
+                    c = (((c << 16) & 0xFFFFFFFF | c >> 16) + d) & 0xFFFFFFFF
 
                     b = md5.md5_step(md5.H, b, c, d, a, block[14], 0xfde5380c, 23)
                     a = md5.md5_step(md5.H, a, b, c, d, block[1], 0xa4beea44, 4)
@@ -270,9 +281,15 @@ def find_block0(IV):
                         continue
                     b = md5.md5_step(md5.I, b, c, d, a, block[9], 0xeb86d391, 21)
 
+                    # print(f"After a: {a}")
+                    # print(f"b: {b}")
+                    # print(f"c: {c}")
+                    # print(f"d: {d}")
+
                     IHV1 = (b + IV[1]) & 0xFFFFFFFF
                     IHV2 = (c + IV[2]) & 0xFFFFFFFF
                     IHV3 = (d + IV[3]) & 0xFFFFFFFF
+
                     wang = True
                     if 0x02000000 != ((IHV2 ^ IHV1) & 0x86000000):
                         wang = False
@@ -282,18 +299,20 @@ def find_block0(IV):
                         wang = False
 
                     stevens = True
-                    if ((IHV1 ^ IHV2) >> 31) != 0 or \
-                            ((IHV1 ^ IHV3) >> 31) != 0:
+                    if (
+                            ((IHV1 ^ IHV2) >> 31) != 0 or
+                            ((IHV1 ^ IHV3) >> 31) != 0):
                         stevens = False
-                    if ((IHV3 & (1 << 25)) != 0 or
+                    if (
+                            (IHV3 & (1 << 25)) != 0 or
                             (IHV2 & (1 << 25)) != 0 or
                             (IHV1 & (1 << 25)) != 0 or
                             ((IHV2 ^ IHV1) & 1) != 0):
                         stevens = False
-                    print(".")
+
+                    print(".", end="")
                     if not (wang or stevens):
                         continue
-
                     IV1 = IV.copy()
                     IV2 = IV.copy()
                     block2 = block.copy()
@@ -301,19 +320,19 @@ def find_block0(IV):
                     block2[4] = (block2[4] + (1 << 31)) & 0xFFFFFFFF
                     block2[11] = (block2[11] + (1 << 15)) & 0xFFFFFFFF
                     block2[14] = (block2[14] + (1 << 31)) & 0xFFFFFFFF
-
-                    print(f"{IV1}, {IV2}")
+                    # print(f"{IV1}, {IV2}")
                     IV1 = md5.compress(IV1, block)
                     IV2 = md5.compress(IV2, block2)
-                    print(f"{IV1}, {IV2}")
+                    print(f"IV1, IV2: {IV1}, {IV2}")
 
-                    print(f"{IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)}, {(IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF))}, {(IV2[2] == (IV1[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF))}, {IV2[3] == (IV1[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF)}")
-                    print()
-                    if (IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)) and \
-                            (IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
-                            (IV2[2] == (IV1[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF)) and \
-                            (IV2[3] == (IV1[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF)):
+                    print(
+                        f"{IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)}, {(IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF))}, {(IV2[2] == (IV1[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF))}, {IV2[3] == (IV1[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF)}")
+                    if \
+                            (IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)) and \
+                                    (IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
+                                    (IV2[2] == ((IV1[2] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
+                                    (IV2[3] == ((IV1[3] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)):
                         return
 
-                    if IV2[0] != (IV1[0] + (1 << 31)) & 0xFFFFFFFF:
-                        print("!")
+                    if IV2[0] != ((IV1[0] + (1 << 31)) & 0xFFFFFFFF):
+                        print("!", end="")

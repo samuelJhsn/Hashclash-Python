@@ -50,7 +50,9 @@ def compress(ihv, message):
     for blockN in range(0, int(len(message) / 16)):
         block = message[(blockN * 16 + 0):(blockN * 16 + 16)]
         state = deque(ihv.copy())
+        # print(f"Before: {state}")
         for i in range(64):
+
             if i <= 15:
                 state[0] = md5_step(F, state[0], state[1], state[2], state[3], block[block_indexes[i]], AC[i], RC[i])
                 state.rotate(1)
@@ -64,11 +66,10 @@ def compress(ihv, message):
             else:
                 state[0] = md5_step(I, state[0], state[1], state[2], state[3], block[block_indexes[i]], AC[i], RC[i])
                 state.rotate(1)
-        for i, _ in enumerate(ihv):
-            ihv[i] = (state[i] + ihv[i] & 0xFFFFFFFF)
+            # print(f"Step {i}: {state}")
 
-    for i, _ in enumerate(ihv):
-        ihv[i] = int.from_bytes(ihv[i].to_bytes(4, byteorder='big'), "little")
+        for i, _ in enumerate(ihv):
+            ihv[i] = ((state[i] + ihv[i]) & 0xFFFFFFFF)
 
     return ihv
 
@@ -101,7 +102,7 @@ def md5_step(f, a, b, c, d, word, ac, rc):
 
 def md5_reverse_step(t, Q, ac, rc):
     word = (Q[3 + t + 1] - Q[3 + t]) % (1 << 32)
-    #print(f"First step word: {word}")
+    # print(f"First step word: {word}")
     word = (crs(word, rc) - F(Q[3 + t], Q[3 + t - 1], Q[3 + t - 2]) - Q[3 + t - 3] - ac) % (1 << 32)
     return word
 
