@@ -327,6 +327,7 @@ def find_block0(IV):
                             (IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
                             (IV2[2] == ((IV1[2] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
                             (IV2[3] == ((IV1[3] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)):
+                        print(f"\nFound block: {block}")
                         return block
 
                     if IV2[0] != ((IV1[0] + (1 << 31)) & 0xFFFFFFFF):
