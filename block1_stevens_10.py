@@ -137,12 +137,11 @@ def find_block1_stevens_10(block, IV):
 
             q10 = q10b | (q9q10mask[k10] & 0x08000004)
 
-            m10 = (md5.crs(Q[14] - q10, 17)) % (1 << 32)
+            m10 = (md5.crs((Q[14] - q10) % (1 << 32), 17)) % (1 << 32)
 
             q9 = q9b | (q9q10mask[k10] & 0x00004200)
 
-            m10 -= md5.F(q10, q9, Q[11]) + tt10
-
+            m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
             aa = Q[24]
 
             dd = (tt22 + m10) & 0xFFFFFFFF
@@ -268,9 +267,9 @@ def find_block1_stevens_10(block, IV):
                 for i in range(1 << 4):
                     IV2[i] = (IV[i] + (1 << 31)) & 0xFFFFFFFF
 
-                IV2[1] -= (1 << 25)
-                IV2[2] -= (1 << 25)
-                IV2[3] -= (1 << 25)
+                IV2[1] = (IV2[1] - (1 << 25)) % (1 << 32)
+                IV2[2] = (IV2[1] - (1 << 25)) % (1 << 32)
+                IV2[3] = (IV2[1] - (1 << 25)) % (1 << 32)
 
                 block2[4] = (block2[4] + (1 << 31)) & 0xFFFFFFFF
                 block2[11] = (block2[11] + (1 << 15)) & 0xFFFFFFFF

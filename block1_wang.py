@@ -145,12 +145,12 @@ def find_block1_wang(IV):
 
             q10 = q10b ^ q10mask[counter2]
 
-            m10 = (md5.crs(Q[14] - q10, 17)) % (1 << 32)
+            m10 = (md5.crs((Q[14] - q10) % (1 << 32), 17)) % (1 << 32)
 
             q9 = q9b ^ q9mask[counter2]
             counter2 += 1
 
-            m10 -= md5.F(q10, q9, Q[11]) + tt10
+            m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
 
             aa = Q[24]
 
@@ -278,9 +278,9 @@ def find_block1_wang(IV):
                     IV1[t] = IV[t]
                     IV2[t] = (IV[t] + (1 << 31)) & 0xFFFFFFFF
 
-                IV2[1] += (1 << 25)
-                IV2[2] += (1 << 25)
-                IV2[3] += (1 << 25)
+                IV2[1] = (IV2[1] + (1 << 25)) & 0xFFFFFFFF
+                IV2[2] = (IV2[1] + (1 << 25)) & 0xFFFFFFFF
+                IV2[3] = (IV2[1] + (1 << 25)) & 0xFFFFFFFF
 
                 block2[4] += 1 << 31
                 block2[11] -= 1 << 15

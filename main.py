@@ -1,5 +1,6 @@
 import random
 import block0
+import block0v2
 import block1
 import md5
 import hashlib
@@ -22,7 +23,7 @@ def test():
 def main():
     IV = MD5IV.copy()
     cpuCount = int(cpu_count() / 1.5)
-    with Pool(cpuCount-5) as p:
+    with Pool(cpuCount) as p:
         p.map(find_collision, [IV] * cpuCount)
         p.terminate()
 
@@ -30,6 +31,8 @@ def main():
 def find_collision(IV):
     print("Generating first block: ")
     msg1_block0 = block0.find_block0(IV)
+
+    IV = md5.compress(IV, msg1_block0)
 
     print("Generating second block: ")
     msg1_block1 = block1.find_block1(IV)
