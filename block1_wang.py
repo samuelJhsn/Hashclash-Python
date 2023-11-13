@@ -1,6 +1,4 @@
 import random
-
-import block0
 import md5
 
 
@@ -22,7 +20,6 @@ def find_block1_wang(IV):
     q9mask2 = [(((k << 1) ^ (k << 7) ^ (k << 14) ^ (k << 15) ^ (k << 22)) & 0x6074041c) for k in range(len(q9mask2))]
 
     while True:
-        #print(f"{superCounter}: {block}")
         superCounter += 1
 
         aa = Q[3] & 0x80000000
@@ -120,8 +117,6 @@ def find_block1_wang(IV):
         counter = 0
         while counter < (1 << 6):
 
-            #print(f"counter2: {counter}")
-
             Q[7] = q4b ^ q4mask[counter]
             counter += 1
             block[5] = md5.md5_reverse_step(5, Q, 0x4787c62a, 12)
@@ -129,7 +124,7 @@ def find_block1_wang(IV):
             q21 = (tt21 + block[5]) & 0xFFFFFFFF
             q21 = md5.cls(q21, 5)
             q21 = (q21 + Q[23]) & 0xFFFFFFFF
-            #print(f"q21: {q21}, Q[23]: {Q[23]}")
+
             if 0 != ((q21 ^ Q[23]) & 0x80020000):
                 continue
 
@@ -147,12 +142,10 @@ def find_block1_wang(IV):
             counter2 = 0
             while counter2 < (1 << 5):
 
-                #print(f"counter22: {counter2}")
-
                 q10 = q10b ^ q10mask[counter2]
 
                 m10 = md5.crs((Q[14] - q10) % (1 << 32), 17)
-                #print(f"q9 vorher: {q9b}, {q9mask[counter2]}")
+
                 q9 = q9b ^ q9mask[counter2]
                 counter2 += 1
 
@@ -162,13 +155,13 @@ def find_block1_wang(IV):
 
                 dd = (tt22 + m10) & 0xFFFFFFFF
                 dd = (md5.cls(dd, 9) + aa) & 0xFFFFFFFF
-                #print(f"{superCounter}: tt10:{tt10}, tt22:{tt22}, m10:{m10}, q9b:{q9b}, q9:{q9}, q10:{q10}, Q[11]: {Q[11]}, Q[13]: {Q[13]}, Q[14]:{Q[14]}")
+
                 if 0 != (dd & 0x80000000):
                     continue
 
                 bb = Q[23]
                 cc = (tt23 + md5.G(dd, aa, bb)) & 0xFFFFFFFF
-                #print(f"!!!cc: {cc}")
+
                 if 0 != (cc & 0x20000):
                     continue
                 cc = (md5.cls(cc, 14) + dd) & 0xFFFFFFFF
@@ -179,7 +172,7 @@ def find_block1_wang(IV):
                 bb = (md5.cls(bb, 20) + cc) & 0xFFFFFFFF
                 if 0 == (bb & 0x80000000):
                     continue
-                #print("k9!!!!")
+
                 block[10] = m10
                 Q[12] = q9
                 Q[13] = q10
@@ -291,10 +284,8 @@ def find_block1_wang(IV):
                     block2[11] = (block2[11] - (1 << 15)) % (1 << 32)
                     block2[14] = (block2[14] + (1 << 31)) & 0xFFFFFFFF
 
-                    #print(f"{IV1}, {IV2}")
                     IV1 = md5.compress(IV1, block)
                     IV2 = md5.compress(IV2, block2)
-                    #print(f"{IV1}, {IV2}, {block}")
 
                     print(f"W: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
                     if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:

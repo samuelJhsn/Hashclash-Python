@@ -69,7 +69,7 @@ def find_block1_stevens_00(IV):
 
             q18 = (md5.G(q17, q16, Q[18]) + tt18) & 0xFFFFFFFF
             q18 = md5.cls(q18, 9)
-            q18 += q17
+            q18 = (q18 + q17) & 0xFFFFFFFF
             if 0x80020000 != ((q18 ^ q17) & 0xa0020000):
                 continue
 

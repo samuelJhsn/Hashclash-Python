@@ -2,7 +2,7 @@ import random
 
 import md5
 
-seed32_1 = 0x12
+seed32_1 = 0x12345678
 seed32_2 = 0x12345678
 
 
@@ -317,11 +317,6 @@ def find_block0(IV):
 
                     IV1 = md5.compress(IV1, block)
                     IV2 = md5.compress(IV2, block2)
-
-                    #print(f"{IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)}, "
-                    #      f"{(IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF))}, "
-                    #      f"{(IV2[2] == (IV1[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF))}, "
-                    #      f"{IV2[3] == (IV1[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF)}")
 
                     if (IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)) and \
                             (IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \

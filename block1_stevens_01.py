@@ -1,6 +1,4 @@
 import random
-
-import block0
 import md5
 
 
@@ -20,21 +18,21 @@ def find_block1_stevens_01(IV):
         superCounter += 1
         aa = Q[3] & 0x80000000
 
-        Q[5] = (block0.xrng64() & 0x4db0e03e) | 0x32460441 | aa
-        Q[6] = (block0.xrng64() & 0x0c000008) | 0x123c3af1 | (Q[5] & 0x80800002)
+        Q[5] = (random.randint(0, (2 ** 32) - 1) & 0x4db0e03e) | 0x32460441 | aa
+        Q[6] = (random.randint(0, (2 ** 32) - 1) & 0x0c000008) | 0x123c3af1 | (Q[5] & 0x80800002)
         Q[7] = 0xe398f812 ^ (Q[6] & 0x88000000)
-        Q[8] = (block0.xrng64() & 0x82000000) | 0x4c66e99e
-        Q[9] = (block0.xrng64() & 0x80000000) | 0x27180590
-        Q[10] = (block0.xrng64() & 0x00010130) | 0x51ea9e47
-        Q[11] = (block0.xrng64() & 0x40200800) | 0xb7c291e5
-        Q[12] = (block0.xrng64() & 0x00044000) | 0x380002b4
+        Q[8] = (random.randint(0, (2 ** 32) - 1) & 0x82000000) | 0x4c66e99e
+        Q[9] = (random.randint(0, (2 ** 32) - 1) & 0x80000000) | 0x27180590
+        Q[10] = (random.randint(0, (2 ** 32) - 1) & 0x00010130) | 0x51ea9e47
+        Q[11] = (random.randint(0, (2 ** 32) - 1) & 0x40200800) | 0xb7c291e5
+        Q[12] = (random.randint(0, (2 ** 32) - 1) & 0x00044000) | 0x380002b4
         Q[13] = 0xb282b208 | (Q[12] & 0x00044000)
-        Q[14] = (block0.xrng64() & 0x12808008) | 0xc5712f47
-        Q[15] = (block0.xrng64() & 0x1ef18d7f) | 0x000a3080
-        Q[16] = (block0.xrng64() & 0x1efb1d77) | 0x4004c008
-        Q[17] = (block0.xrng64() & 0x1fff5d77) | 0x6000a288
-        Q[18] = (block0.xrng64() & 0x1efe7ff7) | 0xa0008000 | (~Q[17] & 0x00010000)
-        Q[19] = (block0.xrng64() & 0x1ffdffff) | 0x20000000 | (~Q[18] & 0x00020000)
+        Q[14] = (random.randint(0, (2 ** 32) - 1) & 0x12808008) | 0xc5712f47
+        Q[15] = (random.randint(0, (2 ** 32) - 1) & 0x1ef18d7f) | 0x000a3080
+        Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x1efb1d77) | 0x4004c008
+        Q[17] = (random.randint(0, (2 ** 32) - 1) & 0x1fff5d77) | 0x6000a288
+        Q[18] = (random.randint(0, (2 ** 32) - 1) & 0x1efe7ff7) | 0xa0008000 | (~Q[17] & 0x00010000)
+        Q[19] = (random.randint(0, (2 ** 32) - 1) & 0x1ffdffff) | 0x20000000 | (~Q[18] & 0x00020000)
 
         block[5] = md5.md5_reverse_step(5, Q, 0x4787c62a, 12)
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
@@ -56,7 +54,7 @@ def find_block1_stevens_01(IV):
         while counter < (1 << 12):
             counter += 1
 
-            q1 = q1a | (block0.xrng64() & 0x7dfff39e)
+            q1 = q1a | (random.randint(0, (2 ** 32) - 1) & 0x7dfff39e)
 
             m1 = (Q[5] - q1) % (1 << 32)
             m1 = (md5.crs(m1, 12) - md5.F(q1, Q[3], Q[2]) - tt1) % (1 << 32)

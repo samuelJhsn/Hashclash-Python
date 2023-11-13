@@ -275,10 +275,8 @@ def find_block1_stevens_10(IV):
                 block2[11] = (block2[11] + (1 << 15)) & 0xFFFFFFFF
                 block2[14] = (block2[14] + (1 << 31)) & 0xFFFFFFFF
 
-                #print(f"{IV1}, {IV2}")
                 IV1 = md5.compress(IV1, block)
                 IV2 = md5.compress(IV2, block2)
-                #print(f"{IV1}, {IV2}")
 
                 print(f"10: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
