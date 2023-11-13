@@ -3,7 +3,8 @@ import random
 import md5
 
 
-def find_block1_stevens_10(block, IV):
+def find_block1_stevens_10(IV):
+    block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
     q9q10mask = [0] * 16
@@ -73,13 +74,13 @@ def find_block1_stevens_10(block, IV):
 
             q18 = (md5.G(q17, q16, Q[18]) + tt18) & 0xFFFFFFFF
             q18 = md5.cls(q18, 9)
-            q18 += q17
+            q18 = (q18 + q17) & 0xFFFFFFFF
             if 0x80020000 != ((q18 ^ q17) & 0xa0020000):
                 continue
 
             q19 = (md5.G(q18, q17, q16) + tt19) & 0xFFFFFFFF
             q19 = md5.cls(q19, 14)
-            q19 += q18
+            q19 = (q19 + q18) & 0xFFFFFFFF
             if 0 != (q19 & 0x80020000):
                 continue
 
@@ -88,7 +89,7 @@ def find_block1_stevens_10(block, IV):
 
             q20 = (md5.G(q19, q18, q17) + q16 + 0xe9b6c7aa + m0) & 0xFFFFFFFF
             q20 = md5.cls(q20, 20)
-            q20 += q19
+            q20 = (q20 + q19) & 0xFFFFFFFF
             if 0x00040000 != ((q20 ^ q19) & 0x80040000):
                 continue
 
@@ -105,7 +106,7 @@ def find_block1_stevens_10(block, IV):
 
             q21 = (md5.G(Q[23], Q[22], Q[21]) + Q[20] + 0xd62f105d + block[5]) & 0xFFFFFFFF
             q21 = md5.cls(q21, 5)
-            q21 += Q[23]
+            q21 = (q21 + Q[23])
             if 0 != ((q21 ^ Q[23]) & 0x80020000):
                 continue
             Q[24] = q21
@@ -128,9 +129,7 @@ def find_block1_stevens_10(block, IV):
         tt10 = (Q[10] + 0xffff5bb1) & 0xFFFFFFFF
 
         tt22 = (md5.G(Q[24], Q[23], Q[22]) + Q[21] + 0x02441453) & 0xFFFFFFFF
-
         tt23 = (Q[22] + 0xd8a1e681 + block[15]) & 0xFFFFFFFF
-
         tt24 = (Q[23] + 0xe7d3fbc8 + block[4]) & 0xFFFFFFFF
 
         for k10 in range(1 << 4):
@@ -170,11 +169,13 @@ def find_block1_stevens_10(block, IV):
 
             for k9 in range(1 << 10):
 
+                Q[12] = q9 ^ q9mask[k9]
+
                 a = aa
                 b = bb
                 c = cc
                 d = dd
-                Q[12] = q9 ^ q9mask[k9]
+
                 block[8] = md5.md5_reverse_step(8, Q, 0x698098d8, 7)
                 block[9] = md5.md5_reverse_step(9, Q, 0x8b44f7af, 12)
                 block[12] = md5.md5_reverse_step(12, Q, 0x6b901122, 7)
@@ -190,10 +191,10 @@ def find_block1_stevens_10(block, IV):
                 a = md5.md5_step(md5.H, a, b, c, d, block[5], 0xfffa3942, 4)
                 d = md5.md5_step(md5.H, d, a, b, c, block[8], 0x8771f681, 11)
 
-                c += md5.H(d, a, b) + block[11] + 0x6d9d6122
+                c = (c + md5.H(d, a, b) + block[11] + 0x6d9d6122) & 0xFFFFFFFF
                 if 0 != (c & (1 << 15)):
                     continue
-                c = ((c << 16 | c >> 16) + d) & 0xFFFFFFFF
+                c = (((c << 16) & 0xFFFFFFFF | c >> 16) + d) & 0xFFFFFFFF
 
                 b = md5.md5_step(md5.H, b, c, d, a, block[14], 0xfde5380c, 23)
                 a = md5.md5_step(md5.H, a, b, c, d, block[1], 0xa4beea44, 4)
@@ -256,20 +257,19 @@ def find_block1_stevens_10(block, IV):
                 c = md5.md5_step(md5.I, c, d, a, b, block[2], 0x2ad7d2bb, 15)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                b = md5.md5_step(md5.I, b, c, d, a, block[9], 0xeb86d391, 21)
 
                 print(".S10")
 
                 IV1 = IV.copy()
-                IV2 = [0] * 16
+                IV2 = [0] * 4
                 block2 = block.copy()
 
-                for i in range(1 << 4):
+                for i in range(4):
                     IV2[i] = (IV[i] + (1 << 31)) & 0xFFFFFFFF
 
                 IV2[1] = (IV2[1] - (1 << 25)) % (1 << 32)
-                IV2[2] = (IV2[1] - (1 << 25)) % (1 << 32)
-                IV2[3] = (IV2[1] - (1 << 25)) % (1 << 32)
+                IV2[2] = (IV2[2] - (1 << 25)) % (1 << 32)
+                IV2[3] = (IV2[3] - (1 << 25)) % (1 << 32)
 
                 block2[4] = (block2[4] + (1 << 31)) & 0xFFFFFFFF
                 block2[11] = (block2[11] + (1 << 15)) & 0xFFFFFFFF
@@ -280,10 +280,9 @@ def find_block1_stevens_10(block, IV):
                 IV2 = md5.compress(IV2, block2)
                 #print(f"{IV1}, {IV2}")
 
-                IV1 = md5.compress(IV1, block)
-                IV2 = md5.compress(IV2, block2)
+                print(f"10: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
-                    return
+                    return block
 
                 if IV2[0] != IV1[0]:
                     print("!")
