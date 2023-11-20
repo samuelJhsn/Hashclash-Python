@@ -61,6 +61,7 @@ if __name__ == '__main__':
                 text = re.sub(r"([^Q]) (= )(.*\+)+(.*)", r"\1 \2(\3\4) & 0xFFFFFFFF", text)
                 text = re.sub(r"([^Q]) (= )(.*-)+(.*)", r"\1 \2(\3\4) % (1 << 32)", text)
                 text = re.sub(r"([a-z0-9]*) (-=) (.*)", r"\1 = (\1 - \3) % (1 << 32)", text)
+                text = re.sub(r"([a-z0-9]*) (\+=) (.*)", r"\1 = (\1 + \3) & 0xFFFFFFFF", text)
 
                 text = re.sub(r"Q\[68] = IV\[0], IV\[3], IV\[2], IV\[1]", r"block = [0] * 16 \
 Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64", text)
