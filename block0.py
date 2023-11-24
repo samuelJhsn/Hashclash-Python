@@ -50,6 +50,7 @@ def find_block0(IV):
         block[0] = md5.md5_reverse_step(0, Q, 0xd76aa478, 7)
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
         block[7] = md5.md5_reverse_step(7, Q, 0xfd469501, 22)
+        # calculating block[8], block[9], block[10], block[12], block[13] not necessary, changed later anyway
         block[11] = md5.md5_reverse_step(11, Q, 0x895cd7be, 22)
         block[14] = md5.md5_reverse_step(14, Q, 0xa679438e, 17)
         block[15] = md5.md5_reverse_step(15, Q, 0x49b40821, 22)
@@ -179,10 +180,9 @@ def find_block0(IV):
                 block[10] = m10
                 block[13] = (tt13 - q10) % (1 << 32)
 
-                # iterate over possible changes of q9 and q10
-                # while keeping conditions on q1-q21 intact
-                # this changes m8, m9, m10, m12 and m13( and not m11!)
-                # the possible changes of q9 that also do not change m10 are used below
+                # iterate over possible changes of q9
+                # while keeping conditions on q1-q24 intact
+                # this changes m8, m9 and m12 (but not m10!)
                 for counter4 in range(1 << 16):
 
                     q9 = Q[12] ^ q9mask[counter4]

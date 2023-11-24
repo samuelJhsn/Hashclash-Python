@@ -12,6 +12,7 @@ import math
 import textwrap
 from operator import add
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def getHashes(compRoomStart, compRoomEnd, hashFunction):
@@ -63,10 +64,8 @@ def getRandomWalkStats(hashes, hashFunction):
         os.makedirs(newDir)
     os.chdir(newDir)
 
-    timeStamp = datetime.now().strftime("%H_%M_%S_")
-    plt.figure(timeStamp)
-    ax = plt.gca()
-    ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
+    id = datetime.now().strftime("%H_%M_%S_") + f"{os.getpid()}"
+    plt.figure(id)
     plt.xlabel("bit position")
     plt.ylabel("cumulative bit value")
 
@@ -95,28 +94,27 @@ def getRandomWalkStats(hashes, hashFunction):
         allMaxY += [maxY]
         allMinY += [minY]
         allZeroPos += zeroPos
-        plt.figure(timeStamp + str(i))
-        ax = plt.gca()
-        ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
-        plt.xlabel("bit position")
-        plt.ylabel("cumulative bit value")
+        if (i + 50) % 50 == 0:
+            plt.figure(id + str(i))
+            ax = plt.gca()
+            ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
+            plt.xlabel("bit position")
+            plt.ylabel("cumulative bit value")
+            plt.plot(xPos, yPos)
+            # plt.scatter(zeroPos, [0] * len(zeroPos), marker="o")
+            plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 10] * len(zeroPos) + [ax.get_ylim()[1] // 10] * len(zeroPos),
+                        marker="o")
+            plt.savefig(id + str(i))
+        plt.figure(id)
         plt.plot(xPos, yPos)
-        # plt.scatter(zeroPos, [0] * len(zeroPos), marker="o")
-        plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 10] * len(zeroPos) + [ax.get_ylim()[1] // 10] * len(zeroPos),
-                    marker="o")
 
-        plt.savefig(timeStamp + str(i))
+    plt.figure(id)
+    ax = plt.gca()
+    ax.set_ylim([min(-40, min(allMinY) - 5), max(40, max(allMaxY) + 5)])
+    plt.savefig(id)
 
-        plt.figure(timeStamp)
-        plt.plot(xPos, yPos)
-        plt.scatter(zeroPos, [-40] * len(zeroPos), marker="o")
-        # print(zeroPos)
-        pair += [zeroPos]
-
-    plt.figure(timeStamp)
-    plt.savefig(timeStamp)
-    print(np.mean(allZeroPos[:10]))
-    randomWalkStats = [('%.1f' % (np.mean(allZeroPos[:10]))), min(allMinY), max(allMaxY), ('%.4f' % (np.mean(endPoints)))]
+    randomWalkStats = [round((np.mean([elem for elem in allZeroPos if elem != 0])), 1),
+                       min(allMinY), max(allMaxY), round((np.mean(endPoints)), 4), allZeroPos, endPoints]
 
     os.chdir(oldDir)
 
@@ -130,38 +128,11 @@ def main():
         if sys.argv[1].lower() not in hashlib.algorithms_guaranteed:
             print(f"Try again with a valid hash function out of: {hashlib.algorithms_guaranteed}")
             sys.exit(1)
-        match sys.argv[1]:
-            case "md5":
-                hashFunction = hashlib.md5
-            case "sha1":
-                hashFunction = hashlib.sha1
-            case "sha224":
-                hashFunction = hashlib.sha224
-            case "sha256":
-                hashFunction = hashlib.sha256
-            case "sha384":
-                hashFunction = hashlib.sha384
-            case "sha512":
-                hashFunction = hashlib.sha512
-            case "shake_128":
-                hashFunction = hashlib.shake_128
-            case "shake_256":
-                hashFunction = hashlib.shake_256
-            case "blake2b":
-                hashFunction = hashlib.blake2b
-            case "blake2s":
-                hashFunction = hashlib.md5
-            case "sha3_224":
-                hashFunction = hashlib.sha3_224
-            case "sha3_256":
-                hashFunction = hashlib.sha3_256
-            case "sha3_384":
-                hashFunction = hashlib.sha3_384
-            case _:
-                hashFunction = hashlib.sha3_512
+        hashFunction = getattr(hashlib, sys.argv[1])
     except IndexError as indErr:
         print(f"{indErr}: Expected first argument out of: {hashlib.algorithms_guaranteed}")
         sys.exit(1)
+
     try:
         cpuCount = cpu_count() // 2
         compRooms = getCompRooms(0, int(sys.argv[2]), cpuCount)
@@ -173,10 +144,11 @@ def main():
         sys.exit(1)
 
     start = time.perf_counter()
-
+    plt.rcParams['figure.dpi'] = 300
     with Pool(cpuCount) as p:
         hashingParams = [tup + (hashFunction,) for tup in compRooms]
-        print(f"Generating {compRooms[0][1]} {sys.argv[1]} hashes in each of {cpuCount} processes, please "
+        print(f"Generating {compRooms[0][1]} {sys.argv[1]} hashes in each of {cpuCount} "
+              f"processes (= {compRooms[0][1] * cpuCount} hashes), please "
               f"wait...")
         hashes = p.starmap(getHashes, hashingParams)
         statParams = [(partOfHashes, hashFunction,) for partOfHashes in hashes]
@@ -190,8 +162,29 @@ def main():
     #            distribution,
     #            delimiter=", ",
     #            fmt="% s")
+
+    allZeroPos = [result[4] for result in randWalkStats]
+    allZeroPos = sum(allZeroPos, [])
+    makeHistograms(allZeroPos, "zeroPos")
+
+    allEndPoints = [result[5] for result in randWalkStats]
+    allEndPoints = sum(allEndPoints, [])
+    makeHistograms(allEndPoints, "allEndPoints")
+
+    for result in randWalkStats:
+        del result[-2:]
+    meanZeroPos = round(np.mean([result[0] for result in randWalkStats]))
+    minYPos = min([result[1] for result in randWalkStats])
+    maxYPos = min([result[2] for result in randWalkStats])
+    meanEndPoints = round(np.mean([result[3] for result in randWalkStats]), 3)
+
+    randWalkStats.insert(0, ["Mean of zero positions", "Minimum y value", "Maximum y value", "Mean of end points"])
+    randWalkStats.append(["Mean of all zero positions", "Minimum of all y value",
+                          "Maximum of all y value", "Mean of all end points"])
+    randWalkStats.append([meanZeroPos, minYPos, maxYPos, meanEndPoints])
+
     with open("randomWalkStats.csv", "w") as f:
-        writer = csv.writer(f, delimiter=';')
+        writer = csv.writer(f, delimiter=';', lineterminator='\n')
         writer.writerows(randWalkStats)
 
     end = time.perf_counter()
@@ -217,6 +210,28 @@ def getCompRooms(minPower=0, maxPower=0, cpuCount=1):
         minPower, maxPower = maxPower, minPower
     hashesPerProcess = ((2 ** maxPower) - (2 ** minPower)) // cpuCount
     return [(hashesPerProcess * i, hashesPerProcess * (i + 1)) for i in range(cpuCount)]
+
+
+def freedmanDiaconisBinCount(data):
+    q25, q75 = np.percentile(data, [25, 75])
+    bin_width = 2 * (q75 - q25) * len(data) ** (-1 / 3)
+    bins = round((max(data) - min(data) / bin_width))
+    return bins
+
+
+def makeHistograms(data, graphName=""):
+    bins = freedmanDiaconisBinCount(data)
+    plt.figure(f"pyPlot_{graphName}.png")
+    plt.hist(data, density=False, bins=bins)  # density=False/True for count/percentage
+    plt.ylabel('Count')
+    plt.xlabel('Data')
+    plt.savefig(f"pyPlot_{graphName}.png")
+
+    plt.figure(f"sns_{graphName}.png")
+    sns.displot(data, bins=bins, kde=True)
+    plt.ylabel('Count')
+    plt.xlabel('Data')
+    plt.savefig(f"sns_{graphName}.png")
 
 
 if __name__ == '__main__':
