@@ -48,8 +48,8 @@ def getBitDistribution(hashes, hashFunction):
         bitDistribution = list(map(add, bitDistribution, h))
     endBitCount = time.perf_counter()
 
-    # print(f"Took {endBitCount - startBitCount} seconds to count "
-    #      f"{8 * hashlib.md5().digest_size * len(hashes)} bits in all hashes.")
+    print(f"Took {endBitCount - startBitCount} seconds to count "
+         f"{8 * hashlib.md5().digest_size * len(hashes)} bits in all hashes.")
 
     return bitDistribution
 
@@ -94,7 +94,7 @@ def getRandomWalkStats(hashes, hashFunction):
         allMaxY += [maxY]
         allMinY += [minY]
         allZeroPos += zeroPos
-        if (i + 50) % 50 == 0:
+        if (i + 2000) % 2000 == 0:
             plt.figure(id + str(i))
             ax = plt.gca()
             ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
@@ -102,7 +102,7 @@ def getRandomWalkStats(hashes, hashFunction):
             plt.ylabel("cumulative bit value")
             plt.plot(xPos, yPos)
             # plt.scatter(zeroPos, [0] * len(zeroPos), marker="o")
-            plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 10] * len(zeroPos) + [ax.get_ylim()[1] // 10] * len(zeroPos),
+            plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 5] * len(zeroPos) + [ax.get_ylim()[1] // 5] * len(zeroPos),
                         marker="o")
             plt.savefig(id + str(i))
         plt.figure(id)
@@ -165,11 +165,11 @@ def main():
 
     allZeroPos = [result[4] for result in randWalkStats]
     allZeroPos = sum(allZeroPos, [])
-    makeHistograms(allZeroPos, "zeroPos")
+    makeHistogram(allZeroPos, "zeroPos")
 
     allEndPoints = [result[5] for result in randWalkStats]
     allEndPoints = sum(allEndPoints, [])
-    makeHistograms(allEndPoints, "allEndPoints")
+    makeHistogram(allEndPoints, "allEndPoints")
 
     for result in randWalkStats:
         del result[-2:]
@@ -219,13 +219,8 @@ def freedmanDiaconisBinCount(data):
     return bins
 
 
-def makeHistograms(data, graphName=""):
+def makeHistogram(data, graphName=""):
     bins = freedmanDiaconisBinCount(data)
-    plt.figure(f"pyPlot_{graphName}.png")
-    plt.hist(data, density=False, bins=bins)  # density=False/True for count/percentage
-    plt.ylabel('Count')
-    plt.xlabel('Data')
-    plt.savefig(f"pyPlot_{graphName}.png")
 
     plt.figure(f"sns_{graphName}.png")
     sns.displot(data, bins=bins, kde=True)
