@@ -1,3 +1,47 @@
+"""
+
+MD5 collision generator
+=======================
+Source code files:
+  block0.cpp
+  block1.cpp
+  main.cpp
+  main.hpp
+  md5.cpp
+  block1wang.cpp
+  block1stevens00.cpp
+  block1stevens01.cpp
+  block1stevens10.cpp
+  block1stevens11.cpp
+Win32 executable:
+  fastcoll_v1.0.0.5.exe
+
+Version
+=======
+version 1.0.0.5-1, April 2006.
+
+Copyright
+=========
+© M. Stevens, 2006. All rights reserved.
+
+Disclaimer
+==========
+This software is provided as is. Use is at the user's risk.
+No guarantee whatsoever is given on how it may function or malfunction.
+Support cannot be expected.
+This software is meant for scientific and educational purposes only.
+It is forbidden to use it for other than scientific or educational purposes.
+In particular, commercial and malicious use is not allowed.
+Further distribution of this software, by whatever means, is not allowed
+without our consent.
+This includes publication of source code or executables in printed form,
+on websites, newsgroups, CD-ROM's, etc.
+Changing the (source) code without our consent is not allowed.
+In all versions of the source code this disclaimer, the copyright
+notice and the version number should be present.
+
+"""
+
 import random
 
 import md5

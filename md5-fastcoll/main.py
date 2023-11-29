@@ -1,4 +1,3 @@
-import random
 import block0
 import block1
 import md5

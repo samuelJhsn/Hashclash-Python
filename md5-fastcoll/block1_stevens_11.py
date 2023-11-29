@@ -1,38 +1,80 @@
-import random
+"""
 
+MD5 collision generator
+=======================
+Source code files:
+  block0.cpp
+  block1.cpp
+  main.cpp
+  main.hpp
+  md5.cpp
+  block1wang.cpp
+  block1stevens00.cpp
+  block1stevens01.cpp
+  block1stevens10.cpp
+  block1stevens11.cpp
+Win32 executable:
+  fastcoll_v1.0.0.5.exe
+
+Version
+=======
+version 1.0.0.5-1, April 2006.
+
+Copyright
+=========
+© M. Stevens, 2006. All rights reserved.
+
+Disclaimer
+==========
+This software is provided as is. Use is at the user's risk.
+No guarantee whatsoever is given on how it may function or malfunction.
+Support cannot be expected.
+This software is meant for scientific and educational purposes only.
+It is forbidden to use it for other than scientific or educational purposes.
+In particular, commercial and malicious use is not allowed.
+Further distribution of this software, by whatever means, is not allowed
+without our consent.
+This includes publication of source code or executables in printed form,
+on websites, newsgroups, CD-ROM's, etc.
+Changing the (source) code without our consent is not allowed.
+In all versions of the source code this disclaimer, the copyright
+notice and the version number should be present.
+
+"""
+
+import random
 import md5
 
 
-def find_block1_stevens_10(IV):
+def find_block1_stevens_11(IV):
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
-    q9q10mask = [0] * 16
-    q9q10mask = [(((k << 2) ^ (k << 8) ^ (k << 11) ^ (k << 25)) & 0x08004204) for k in range(len(q9q10mask))]
+    q9q10mask = [0] * 32
+    q9q10mask = [(((k << 5) ^ (k << 6) ^ (k << 7) ^ (k << 24) ^ (k << 27)) & 0x880002a0) for k in range(len(q9q10mask))]
 
-    q9mask = [0] * 1024
-    q9mask = [(((k << 1) ^ (k << 2) ^ (k << 3) ^ (k << 7) ^ (k << 12) ^ (k << 15) ^ (k << 18) ^ (k << 20)) & 0x2471042a)
+    q9mask = [0] * 512
+    q9mask = [(((k << 1) ^ (k << 3) ^ (k << 8) ^ (k << 12) ^ (k << 15) ^ (k << 18)) & 0x04710c12)
               for k in range(len(q9mask))]
 
     while True:
-
         aa = Q[3] & 0x80000000
 
-        Q[5] = (random.randrange(0, (2 ** 32)) & 0x79b0c6ba) | 0x024c3841 | aa
-        Q[6] = (random.randrange(0, (2 ** 32)) & 0x19300210) | 0x2603096d | (Q[5] & 0x80000082)
-        Q[7] = (random.randrange(0, (2 ** 32)) & 0x10300000) | 0xe4cae30c | (Q[6] & 0x01000030)
-        Q[8] = (random.randrange(0, (2 ** 32)) & 0x10000000) | 0x63494061 | (Q[7] & 0x00300000)
-        Q[9] = 0x7deaff68
-        Q[10] = (random.randrange(0, (2 ** 32)) & 0x20444000) | 0x09091ee0
-        Q[11] = (random.randrange(0, (2 ** 32)) & 0x09040000) | 0xb2529f6d
-        Q[12] = (random.randrange(0, (2 ** 32)) & 0x00040000) | 0x10885184
-        Q[13] = (random.randrange(0, (2 ** 32)) & 0x00000080) | 0x428afb11 | (Q[12] & 0x00040000)
-        Q[14] = (random.randrange(0, (2 ** 32)) & 0x128a8110) | 0x6571266b | (Q[13] & 0x0000080)
-        Q[15] = (random.randrange(0, (2 ** 32)) & 0x3ef38d7f) | 0x00003080 | (~Q[14] & 0x00080000)
-        Q[16] = (random.randrange(0, (2 ** 32)) & 0x3efb1d77) | 0x0004c008
-        Q[17] = (random.randrange(0, (2 ** 32)) & 0x5fff5d77) | 0x8000a288
-        Q[18] = (random.randrange(0, (2 ** 32)) & 0x1efe7ff7) | 0xe0008000 | (~Q[17] & 0x00010000)
-        Q[19] = (random.randrange(0, (2 ** 32)) & 0x5ffdffff) | 0x20000000 | (~Q[18] & 0x00020000)
+        Q[5] = (random.randint(0, (2 ** 32) - 1) & 0x75bef63e) | 0x0a410041 | aa
+        Q[6] = (random.randint(0, (2 ** 32) - 1) & 0x10345614) | 0x0202a9e1 | (Q[5] & 0x84000002)
+        Q[7] = (random.randint(0, (2 ** 32) - 1) & 0x00145400) | 0xe84ba909 | (Q[6] & 0x00000014)
+        Q[8] = (random.randint(0, (2 ** 32) - 1) & 0x80000000) | 0x75e90b1d | (Q[7] & 0x00145400)
+        Q[9] = 0x7c23ff5a | (Q[8] & 0x80000000)
+        Q[10] = (random.randint(0, (2 ** 32) - 1) & 0x40000880) | 0x114bf41a
+        Q[11] = (random.randint(0, (2 ** 32) - 1) & 0x00002090) | 0xb352dd01
+        Q[12] = (random.randint(0, (2 ** 32) - 1) & 0x00044000) | 0x7a803124
+        Q[13] = (random.randint(0, (2 ** 32) - 1) & 0x00002000) | 0xf28a92c9 | (Q[12] & 0x00044000)
+        Q[14] = (random.randint(0, (2 ** 32) - 1) & 0x128a8108) | 0xc5710ed7 | (Q[13] & 0x00002000)
+        Q[15] = (random.randint(0, (2 ** 32) - 1) & 0x9edb8d7f) | 0x20003080 | (~Q[14] & 0x00200000)
+        Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x3efb1d77) | 0x4004c008 | (Q[15] & 0x80000000)
+        Q[17] = (random.randint(0, (2 ** 32) - 1) & 0x1fff5d77) | 0x0000a288
+        Q[18] = (random.randint(0, (2 ** 32) - 1) & 0x1efe7ff7) | 0x20008000 | (~Q[17] & 0x00010000)
+        Q[19] = (random.randint(0, (2 ** 32) - 1) & 0x1ffdffff) | 0x20000000 | (~Q[18] & 0x40020000)
 
         block[5] = md5.md5_reverse_step(5, Q, 0x4787c62a, 12)
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
@@ -42,23 +84,19 @@ def find_block1_stevens_10(IV):
         block[15] = md5.md5_reverse_step(15, Q, 0x49b40821, 22)
 
         tt17 = (md5.G(Q[19], Q[18], Q[17]) + Q[16] + 0xf61e2562) & 0xFFFFFFFF
-
         tt18 = (Q[17] + 0xc040b340 + block[6]) & 0xFFFFFFFF
-
         tt19 = (Q[18] + 0x265e5a51 + block[11]) & 0xFFFFFFFF
 
         tt0 = (md5.F(Q[3], Q[2], Q[1]) + Q[0] + 0xd76aa478) & 0xFFFFFFFF
-
         tt1 = (Q[1] + 0xe8c7b756) & 0xFFFFFFFF
 
-        q1a = 0x02000941 ^ (Q[3] & 0x80000000)
+        q1a = 0x02000861 ^ (Q[3] & 0x80000020)
 
         counter = 0
         while counter < (1 << 12):
-
             counter += 1
 
-            q1 = q1a | (random.randrange(0, (2 ** 32)) & 0x7dfdf6be)
+            q1 = q1a | (random.randint(0, (2 ** 32) - 1) & 0x7dfff79e)
 
             m1 = (Q[5] - q1) % (1 << 32)
             m1 = (md5.crs(m1, 12) - md5.F(q1, Q[3], Q[2]) - tt1) % (1 << 32)
@@ -67,7 +105,7 @@ def find_block1_stevens_10(IV):
 
             q17 = (tt17 + m1) & 0xFFFFFFFF
             q17 = (md5.cls(q17, 5) + q16) & 0xFFFFFFFF
-            if 0x80000000 != ((q17 ^ q16) & 0x80008008):
+            if 0x40000000 != ((q17 ^ q16) & 0xc0008008):
                 continue
             if 0 != (q17 & 0x00020000):
                 continue
@@ -81,7 +119,7 @@ def find_block1_stevens_10(IV):
             q19 = (md5.G(q18, q17, q16) + tt19) & 0xFFFFFFFF
             q19 = md5.cls(q19, 14)
             q19 = (q19 + q18) & 0xFFFFFFFF
-            if 0 != (q19 & 0x80020000):
+            if 0x80000000 != (q19 & 0x80020000):
                 continue
 
             m0 = (q1 - Q[3]) % (1 << 32)
@@ -106,9 +144,10 @@ def find_block1_stevens_10(IV):
 
             q21 = (md5.G(Q[23], Q[22], Q[21]) + Q[20] + 0xd62f105d + block[5]) & 0xFFFFFFFF
             q21 = md5.cls(q21, 5)
-            q21 = (q21 + Q[23])
+            q21 = (q21 + Q[23]) & 0xFFFFFFFF
             if 0 != ((q21 ^ Q[23]) & 0x80020000):
                 continue
+
             Q[24] = q21
 
             counter = 0
@@ -118,7 +157,6 @@ def find_block1_stevens_10(IV):
             continue
 
         q9b = Q[12]
-
         q10b = Q[13]
 
         block[2] = md5.md5_reverse_step(2, Q, 0x242070db, 17)
@@ -132,20 +170,21 @@ def find_block1_stevens_10(IV):
         tt23 = (Q[22] + 0xd8a1e681 + block[15]) & 0xFFFFFFFF
         tt24 = (Q[23] + 0xe7d3fbc8 + block[4]) & 0xFFFFFFFF
 
-        for k10 in range(1 << 4):
+        for k10 in range(1 << 5):
 
-            q10 = q10b | (q9q10mask[k10] & 0x08000004)
+            q10 = q10b | (q9q10mask[k10] & 0x08000040)
 
             m10 = (md5.crs((Q[14] - q10) % (1 << 32), 17)) % (1 << 32)
 
-            q9 = q9b | (q9q10mask[k10] & 0x00004200)
+            q9 = q9b | (q9q10mask[k10] & 0x80000280)
 
             m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
+
             aa = Q[24]
 
             dd = (tt22 + m10) & 0xFFFFFFFF
             dd = (md5.cls(dd, 9) + aa) & 0xFFFFFFFF
-            if 0 != (dd & 0x80000000):
+            if 0 == (dd & 0x80000000):
                 continue
 
             bb = Q[23]
@@ -167,7 +206,7 @@ def find_block1_stevens_10(IV):
             Q[13] = q10
             block[13] = md5.md5_reverse_step(13, Q, 0xfd987193, 12)
 
-            for k9 in range(1 << 10):
+            for k9 in range(1 << 9):
 
                 Q[12] = q9 ^ q9mask[k9]
 
@@ -258,14 +297,11 @@ def find_block1_stevens_10(IV):
                 if 0 != ((a ^ c) >> 31):
                     continue
 
-                print(".S10")
+                print(".S11")
 
                 IV1 = IV.copy()
-                IV2 = [0] * 4
+                IV2 = [((IV[i] + (1 << 31)) & 0xFFFFFFFF) for i in range(4)]
                 block2 = block.copy()
-
-                for i in range(4):
-                    IV2[i] = (IV[i] + (1 << 31)) & 0xFFFFFFFF
 
                 IV2[1] = (IV2[1] - (1 << 25)) % (1 << 32)
                 IV2[2] = (IV2[2] - (1 << 25)) % (1 << 32)
@@ -278,7 +314,7 @@ def find_block1_stevens_10(IV):
                 IV1 = md5.compress(IV1, block)
                 IV2 = md5.compress(IV2, block2)
 
-                print(f"10: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
+                print(f"11: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
                     return block
 
