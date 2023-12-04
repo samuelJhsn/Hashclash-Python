@@ -3,11 +3,21 @@ A python version of the fast MD5 collision algorithm from the Hashclash Repo
 (https://github.com/cr-marcstevens/hashclash/tree/master) by Marc Stevens as well as everything else for my 
 bachelor thesis.
 
-Many thanks to Marc Stevens for granting me GPLv3 license 
-(https://gist.github.com/kn9ts/cbe95340d29fc1aaeaa5dd5c059d2e60) over the Hashclash Github repository 
+Many thanks to Marc Stevens for granting me GPLv3 license over the Hashclash Github repository 
 for this project (my bachelor thesis).
 
 DISCLAIMER: The original author of Hashclash, Marc Stevens, was not involved in any modifications and ports made by me
 in this repository. 
+
+GPLv3 license:
+1. Anyone can copy, modify and distribute this software.
+2. You have to include the license and copyright notice with each and every distribution.
+3. You can use this software privately.
+4. You can use this software for commercial purposes.
+5. If you dare build your business solely from this code, you risk open-sourcing the whole code base.
+6. If you modify it, you have to indicate changes made to the code.
+7. Any modifications of this code base MUST be distributed with the same license, GPLv3.
+8. This software is provided without warranty.
+9. The software author or license can not be held liable for any damages inflicted by the software.
 
 
