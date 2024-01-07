@@ -23,11 +23,6 @@ def main():
     newDir = os.getcwd() + "\\collisions"
     if not os.path.exists(newDir):
         os.makedirs(newDir)
-    result = [1234]
-    filePath = os.getcwd() + "\\collisions\\collisions.txt"
-    with open(filePath, "a+") as file:
-        file.write("\n%s\n" % result)
-        file.close()
 
     IV = MD5IV.copy()
     cpuCount = int(cpu_count() / 1.5)
@@ -36,7 +31,6 @@ def main():
         p.terminate()
 
     print("Done. Quitting...")
-
 
 
 def find_collision(IV):
@@ -62,14 +56,14 @@ def find_collision(IV):
     # print(msg1_block0, msg1_block1)
     # print(msg2_block0, msg2_block1)
 
-    result = [(hex(msg1_block0), hex(msg1_block1)), (hex(msg2_block0), hex(msg2_block1))]
+    result = [(list(map(hex, msg1_block0)), list(map(hex, msg1_block1))), (list(map(hex, msg2_block0)), list(map(hex, msg2_block1)))]
+    print(result)
     filePath = os.getcwd() + "\\collisions\\collisions.txt"
     with open(filePath, "a+") as file:
         file.write("%s\n" % result)
         file.close()
 
 
-
 if __name__ == '__main__':
     main()
-    #test()
+    # test()

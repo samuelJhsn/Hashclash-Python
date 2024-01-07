@@ -56,7 +56,7 @@ if __name__ == '__main__':
                 text = re.sub(r"md5_compress\((.*), (.*)\)", r"\1 = md5.compress(\1, \2)", text)
 
 
-                text = re.sub(r"xrng64\(\)", r"random.randrange(0, (2 ** 32))", text)
+                text = re.sub(r"xrng64\(\)", r"random.randrange(0, (2 ** 32) - 1)", text)
 
                 text = re.sub(r"([^Q]) (= )(.*\+)+(.*)", r"\1 \2(\3\4) & 0xFFFFFFFF", text)
                 text = re.sub(r"([^Q]) (= )(.*-)+(.*)", r"\1 \2(\3\4) % (1 << 32)", text)

@@ -43,20 +43,7 @@ notice and the version number should be present.
 """
 
 import random
-
 import md5
-
-seed32_1 = 0x12345678
-seed32_2 = 0x12345678
-
-
-def xrng64():
-    global seed32_1
-    global seed32_2
-    t = (seed32_1 ^ (seed32_1 << 10)) & 0xFFFFFFFF
-    seed32_1 = seed32_2
-    seed32_2 = ((seed32_2 ^ (seed32_2 >> 10)) ^ (t ^ (t >> 13))) & 0xFFFFFFFF
-    return seed32_1
 
 
 def find_block0(IV):
