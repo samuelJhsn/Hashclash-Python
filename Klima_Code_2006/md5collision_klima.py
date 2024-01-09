@@ -56,19 +56,22 @@ On the other hand, there is a possibility to improve it and to speed up the coll
 
 """
 import os
+import sys
 import time
 
 import md5
 import random
-import datetime
+from datetime import datetime
 from multiprocessing import cpu_count, Pool
+
+MD5_IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
 
 collision_count = 0  # ulong
 out_filename = [""] * 64  # char
-P_IHV1, P_HIHV1 = [0] * 4, [0] * 4  # ulong
+P_IHV1 = [0] * 4  # ulong
 buffer = [""] * 2048  # char
 time3 = time4 = time5 = 0  # double
-now = datetime.datetime.now()
+now = datetime.now().strftime("%d%m%Y-%H%M%S")
 
 x1, M1 = [""] * 16, [""] * 16  # unsigned char
 
@@ -118,16 +121,21 @@ maskQ13 = [(0x2 * (k % 4) + 0x10 * (k // 4 % 2) + 0x40 * (k // 8 % 2) +
             0x8000000 * (k // 1024)) for k in range(len(maskQ13))]
 
 
-def B1(seed=None):
-    random.seed(seed)
+def findBlock1():
+    print(f"{os.getpid()}: state is {random.getstate()}")
+    filePath = os.getcwd() + f"\\collisions\\states_{now}.txt"
+    with open(filePath, "a+") as file:
+        file.write(f"{os.getpid()}: state is {random.getstate()}\n\n")
+        file.close()
+
     Q = [0] * 65
     x = [0] * 16
     IHV1, IHV0, HIHV1, HIHV0 = [0] * 4, [0] * 4, [0] * 4, [0] * 4  # ulong
 
-    QM3 = IHV0[0] = HIHV0[0] = 0x67452301
-    QM0 = IHV0[1] = HIHV0[1] = 0xefcdab89
-    QM1 = IHV0[2] = HIHV0[2] = 0x98badcfe
-    QM2 = IHV0[3] = HIHV0[3] = 0x10325476
+    QM3 = IHV0[0] = MD5_IV[0]
+    QM0 = IHV0[1] = MD5_IV[1]
+    QM1 = IHV0[2] = MD5_IV[2]
+    QM2 = IHV0[3] = MD5_IV[3]
 
     startTime = time.perf_counter()
 
@@ -247,7 +255,7 @@ def B1(seed=None):
         # + 0x20000000 + (Q[15] & 0x80000000) + ((~Q[15]) & 0x00200000)
 
         Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x03dfff88) + 0x20000000 + (Q[15] & 0x80000000) + (
-                (~Q[15]) & 0x00200000)
+                    (~Q[15]) & 0x00200000)
         # Q[17]         = ^1v. .... .... ..0. ^... .... .... ^...
         # position   RNG  = ..** **** **** **.* .*** **** **** .***  0x3ffd7ff7
         # position   NUL  = .... .... .... ..*. .... .... .... ....  0x00020000
@@ -255,23 +263,23 @@ def B1(seed=None):
         # position   Q[16]= *... .... .... .... *... .... .... *...  0x80008008
         Q[17] = (random.randint(0, (2 ** 32) - 1) & 0x3ffd7ff7) + 0x40000000 + (Q[16] & 0x80008008)
 
-        x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - G(Q[16], Q[15], Q[14]) - Q[13] - 0xf61e2562) % (1 << 32)
-        Q[2] = (Q[1] + cls((F(Q[1], QM0, QM1) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF, 12)) & 0xFFFFFFFF
+        x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - (Q[15] ^ (Q[14] & (Q[16] ^ Q[15]))) - Q[13] - 0xf61e2562) % (1 << 32)
+        Q[2] = (Q[1] + cls(((QM1 ^ (Q[1] & (QM0 ^ QM1))) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF, 12)) & 0xFFFFFFFF
 
-        x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - F(Q[6], Q[5], Q[4]) - Q[3] - 0xa8304613) % (1 << 32)
-        x[11] = (crs((Q[12] - Q[11]) % (1 << 32), 22) - F(Q[11], Q[10], Q[9]) - Q[8] - 0x895cd7be) % (1 << 32)
-        x[0] = (crs((Q[1] - QM0) % (1 << 32), 7) - F(QM0, QM1, QM2) - QM3 - 0xd76aa478) % (1 << 32)
-        x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (1 << 32)
-        x[10] = (crs((Q[11] - Q[10]) % (1 << 32), 17) - F(Q[10], Q[9], Q[8]) - Q[7] - 0xffff5bb1) % (1 << 32)
-        x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - F(Q[15], Q[14], Q[13]) - Q[12] - 0x49b40821) % (1 << 32)
-        x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (1 << 32)
+        x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - (Q[4] ^ (Q[6] & (Q[5] ^ Q[4]))) - Q[3] - 0xa8304613) % (1 << 32)
+        x[11] = (crs((Q[12] - Q[11]) % (1 << 32), 22) - (Q[9] ^ (Q[11] & (Q[10] ^ Q[9]))) - Q[8] - 0x895cd7be) % (1 << 32)
+        x[0] = (crs((Q[1] - QM0) % (1 << 32), 7) - (QM2 ^ (QM0 & (QM1 ^ QM2))) - QM3 - 0xd76aa478) % (1 << 32)
+        x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - (Q[3] ^ (Q[5] & (Q[4] ^ Q[3]))) - Q[2] - 0x4787c62a) % (1 << 32)
+        x[10] = (crs((Q[11] - Q[10]) % (1 << 32), 17) - (Q[8] ^ (Q[10] & (Q[9] ^ Q[8]))) - Q[7] - 0xffff5bb1) % (1 << 32)
+        x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - (Q[13] ^ (Q[15] & (Q[14] ^ Q[13]))) - Q[12] - 0x49b40821) % (1 << 32)
+        x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (1 << 32)
 
-        Q[18] = (Q[17] + cls((G(Q[17], Q[16], Q[15]) + Q[14] + x[6] + 0xc040b340) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
+        Q[18] = (Q[17] + cls(((Q[16] ^ (Q[15] & (Q[17] ^ Q[16]))) + Q[14] + x[6] + 0xc040b340) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
 
         if ((Q[18] ^ Q[17]) & 0xa0020000) != 0x00020000:
             continue
 
-        zavorka_Q19 = (G(Q[18], Q[17], Q[16]) + Q[15] + x[11] + 0x265e5a51) & 0xFFFFFFFF
+        zavorka_Q19 = ((Q[17] ^ (Q[16] & (Q[18] ^ Q[17]))) + Q[15] + x[11] + 0x265e5a51) & 0xFFFFFFFF
         if (zavorka_Q19 & 0x0003fff8) == 0x0003fff8:
             continue
 
@@ -279,7 +287,7 @@ def B1(seed=None):
         if ((Q[19] ^ Q[18]) & 0x80020000) != 0x00020000:
             continue
 
-        zavorka_Q20 = (G(Q[19], Q[18], Q[17]) + Q[16] + x[0] + 0xe9b6c7aa) & 0xFFFFFFFF
+        zavorka_Q20 = ((Q[18] ^ (Q[17] & (Q[19] ^ Q[18]))) + Q[16] + x[0] + 0xe9b6c7aa) & 0xFFFFFFFF
         if (zavorka_Q20 & 0xe0000000) == 0:
             continue
 
@@ -287,15 +295,15 @@ def B1(seed=None):
         if (Q[20] & longmask[32]) != bit_Q15_32:
             continue
 
-        Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
+        Q[21] = (Q[20] + cls(((Q[19] ^ (Q[18] & (Q[20] ^ Q[19]))) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
         if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
             continue
 
-        Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
+        Q[22] = (Q[21] + cls(((Q[20] ^ (Q[19] & (Q[21] ^ Q[20]))) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
         if (Q[22] & longmask[32]) != bit_Q15_32:
             continue
 
-        zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
+        zavorka_Q23 = ((Q[21] ^ (Q[20] & (Q[22] ^ Q[21]))) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
         if (zavorka_Q23 & longmask[18]) != 0:
             continue
 
@@ -303,8 +311,7 @@ def B1(seed=None):
         if (Q[23] & longmask[32]) != 0:
             continue
 
-        Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                             20)) & 0xFFFFFFFF
+        Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
         if (Q[24] & longmask[32]) != longmask[32]:
             continue
 
@@ -323,7 +330,7 @@ def B1(seed=None):
         tempq20 = Q[20]
         tempq21 = Q[21]
 
-        B0a = (F(Q[8], Q[7], Q[6]) + Q[5] + 0x698098d8) & 0xFFFFFFFF
+        B0a = ((Q[6] ^ (Q[8] & (Q[7] ^ Q[6]))) + Q[5] + 0x698098d8) & 0xFFFFFFFF
         B0b = (Q[6] + 0x8b44f7af) & 0xFFFFFFFF
 
         for Q10 in range(8):  # 3 bits, 8
@@ -336,20 +343,17 @@ def B1(seed=None):
             Q[21] = tempq21
 
             Q[10] = tempq10 ^ maskQ10[Q10]
-            x[10] = ((crs((Q[11] - Q[10]) % (1 << 32), 17) - F(Q[10], Q[9], Q[8]) - Q[7] - 0xffff5bb1) % (
-                    1 << 32)) % (1 << 32)
-            Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
-                                 9)) & 0xFFFFFFFF
+            x[10] = (crs((Q[11] - Q[10]) % (1 << 32), 17) - (Q[8] ^ (Q[10] & (Q[9] ^ Q[8]))) - Q[7] - 0xffff5bb1) % (1 << 32)
+            Q[22] = (Q[21] + cls(((Q[20] ^ (Q[19] & (Q[21] ^ Q[20]))) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
             if (Q[22] & longmask[32]) != bit_Q15_32:
                 continue
-            zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
+            zavorka_Q23 = ((Q[21] ^ (Q[20] & (Q[22] ^ Q[21]))) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
             if (zavorka_Q23 & longmask[18]) != 0:
                 continue
             Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
             if (Q[23] & longmask[32]) != 0:
                 continue
-            Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                                 20)) & 0xFFFFFFFF
+            Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
             if (Q[24] & longmask[32]) != longmask[32]:
                 continue
 
@@ -361,28 +365,25 @@ def B1(seed=None):
                 x[1] = tempx1
                 x[15] = tempx15
                 Q[20] = tempq20 ^ maskQ20[Q20]
-                x[0] = (crs((Q[20] - Q[19]) % (1 << 32), 20) - G(Q[19], Q[18], Q[17]) - Q[16] - 0xe9b6c7aa) % (
-                        1 << 32)
-                Q[1] = (QM0 + cls((F(QM0, QM1, QM2) + QM3 + x[0] + 0xd76aa478) & 0xFFFFFFFF, 7)) & 0xFFFFFFFF
-                Q[2] = (Q[1] + cls((F(Q[1], QM0, QM1) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF, 12)) & 0xFFFFFFFF
-                x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (
-                        1 << 32)
-                Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
+                x[0] = (crs((Q[20] - Q[19]) % (1 << 32), 20) - (Q[18] ^ (Q[17] & (Q[19] ^ Q[18]))) - Q[16] - 0xe9b6c7aa) % (1 << 32)
+                Q[1] = (QM0 + cls(((QM2 ^ (QM0 & (QM1 ^ QM2))) + QM3 + x[0] + 0xd76aa478) & 0xFFFFFFFF, 7)) & 0xFFFFFFFF
+                Q[2] = (Q[1] + cls(((QM1 ^ (Q[1] & (QM0 ^ QM1))) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF, 12)) & 0xFFFFFFFF
+                x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - (Q[3] ^ (Q[5] & (Q[4] ^ Q[3]))) - Q[2] - 0x4787c62a) % (1 << 32)
+                Q[21] = (Q[20] + cls(((Q[19] ^ (Q[18] & (Q[20] ^ Q[19]))) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
                                      5)) & 0xFFFFFFFF  # was missing
                 if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
                     continue
-                Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
-                                     9)) & 0xFFFFFFFF
+                Q[22] = (Q[21] + cls(((Q[20] ^ (Q[19] & (Q[21] ^ Q[20]))) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
                 if (Q[22] & longmask[32]) != bit_Q15_32:
                     continue
-                zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
+                zavorka_Q23 = ((Q[21] ^ (Q[20] & (Q[22] ^ Q[21]))) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
                 if (zavorka_Q23 & longmask[18]) != 0:
                     continue
                 Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
                 if (Q[23] & longmask[32]) != 0:
                     continue
-                x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (1 << 32)
-                Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
+                x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (1 << 32)
+                Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
                                      20)) & 0xFFFFFFFF
                 if (Q[24] & longmask[32]) != longmask[32]:
                     continue
@@ -395,31 +396,28 @@ def B1(seed=None):
                     Q[4] = tempq4
                     Q[14] = tempq14
                     Q[13] = tempq13 ^ maskQ13[Q13]
-                    x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - G(Q[16], Q[15], Q[14]) - Q[
-                        13] - 0xf61e2562) % (1 << 32)
-                    Q[2] = (Q[1] + cls((F(Q[1], QM0, QM1) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF,
-                                       12)) & 0xFFFFFFFF
-                    x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (
-                            1 << 32)
-                    Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
+                    x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - (Q[15] ^ (Q[14] & (Q[16] ^ Q[15]))) - Q[13] - 0xf61e2562) % (
+                                1 << 32)
+                    Q[2] = (Q[1] + cls(((QM1 ^ (Q[1] & (QM0 ^ QM1))) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF, 12)) & 0xFFFFFFFF
+                    x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - (Q[3] ^ (Q[5] & (Q[4] ^ Q[3]))) - Q[2] - 0x4787c62a) % (1 << 32)
+                    Q[21] = (Q[20] + cls(((Q[19] ^ (Q[18] & (Q[20] ^ Q[19]))) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
                                          5)) & 0xFFFFFFFF
                     if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
                         continue  # two conditions
-                    Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
+                    Q[22] = (Q[21] + cls(((Q[20] ^ (Q[19] & (Q[21] ^ Q[20]))) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
                                          9)) & 0xFFFFFFFF
                     if (Q[22] & longmask[32]) != bit_Q15_32:
                         continue  # one condition
-                    x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - F(Q[15], Q[14], Q[13]) - Q[
-                        12] - 0x49b40821) % (1 << 32)
-                    zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
+                    x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - (Q[13] ^ (Q[15] & (Q[14] ^ Q[13]))) - Q[12] - 0x49b40821) % (
+                                1 << 32)
+                    zavorka_Q23 = ((Q[21] ^ (Q[20] & (Q[22] ^ Q[21]))) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
                     if (zavorka_Q23 & longmask[18]) != 0:
                         continue
                     Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
                     if (Q[23] & longmask[32]) != 0:
                         continue
-                    x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (
-                            1 << 32)
-                    Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
+                    x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (1 << 32)
+                    Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
                                          20)) & 0xFFFFFFFF
                     if (Q[24] & longmask[32]) != longmask[32]:
                         continue
@@ -429,10 +427,9 @@ def B1(seed=None):
                     constxx = ((crs((Q[7] - Q[6]) % (1 << 32), 17) - 0xa8304613
                                 - crs((Q[18] - Q[17]) % (1 << 32), 9) - F(Q[6], Q[5], hQ4p)
                                 - hQ3p) % (1 << 32)
-                               + hQ14p + 0xc040b340 + G(Q[17], Q[16], Q[15])) & 0xFFFFFFFF
+                               + hQ14p + 0xc040b340 + (Q[16] ^ (Q[15] & (Q[17] ^ Q[16])))) & 0xFFFFFFFF
 
-                    B1a = (crs((Q[13] - Q[12]) % (1 << 32), 7) - F(Q[12], Q[11], Q[10]) - 0x6b901122) % (
-                            1 << 32)
+                    B1a = (crs((Q[13] - Q[12]) % (1 << 32), 7) - (Q[10] ^ (Q[12] & (Q[11] ^ Q[10]))) - 0x6b901122) % (1 << 32)
                     B1b = (Q[21] + 0x21e1cde6) & 0xFFFFFFFF
                     B1c = (x[5] + 0xfffa3942) & 0xFFFFFFFF
                     B1d = (x[1] + 0xa4beea44) & 0xFFFFFFFF
@@ -445,33 +442,32 @@ def B1(seed=None):
                             continue
                         Q[4] = ((constxxx & 0x7400000a) + hQ4p) & 0xFFFFFFFF
                         Q[3] = ((constxxx & 0x88000025) + hQ3p) & 0xFFFFFFFF
-                        x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - F(Q[2], Q[1], QM0) - QM1 - 0x242070db) % (
-                                1 << 32)
+                        x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - (QM0 ^ (Q[2] & (Q[1] ^ QM0))) - QM1 - 0x242070db) % (1 << 32)
 
                         B2a = (x[2] + 0xfcefa3f8) & 0xFFFFFFFF
 
                         for Q4 in range(1):  # tunnel Q4,26 not included
 
                             Q[4] = Q[4] ^ 0x02000000
-                            x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[
-                                1] - 0xf57c0faf) % (1 << 32)
-                            Q[24] = (Q[23] + cls(
-                                (G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
+                            x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (
+                                        1 << 32)
+                            Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
+                                                 20)) & 0xFFFFFFFF
                             if (Q[24] & longmask[32]) != longmask[32]:
                                 continue
 
                             Q[14] = (maskQ14[Q14] + hQ14p) & 0xFFFFFFFF
 
-                            x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - F(Q[6], Q[5], Q[4]) - Q[
-                                3] - 0xa8304613) % (1 << 32)
+                            x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - (Q[4] ^ (Q[6] & (Q[5] ^ Q[4]))) - Q[3] - 0xa8304613) % (
+                                        1 << 32)
                             # x[2] = (crs(Q[ 3]-Q[ 2],17) - F(Q[ 2],Q[ 1],  QM0) -   QM1 - 0x242070db) % (1 << 32)
-                            x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - F(Q[3], Q[2],
-                                                                           Q[1]) - QM0 - 0xc1bdceee) % (1 << 32)
-                            x[7] = (crs((Q[8] - Q[7]) % (1 << 32), 22) - F(Q[7], Q[6], Q[5]) - Q[
-                                4] - 0xfd469501) % (1 << 32)
-                            x[13] = (crs((Q[14] - Q[13]) % (1 << 32), 12) - F(Q[13], Q[12], Q[11]) - Q[
+                            x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - (Q[1] ^ (Q[3] & (Q[2] ^ Q[1]))) - QM0 - 0xc1bdceee) % (
+                                        1 << 32)
+                            x[7] = (crs((Q[8] - Q[7]) % (1 << 32), 22) - (Q[5] ^ (Q[7] & (Q[6] ^ Q[5]))) - Q[4] - 0xfd469501) % (
+                                        1 << 32)
+                            x[13] = (crs((Q[14] - Q[13]) % (1 << 32), 12) - (Q[11] ^ (Q[13] & (Q[12] ^ Q[11]))) - Q[
                                 10] - 0xfd987193) % (1 << 32)
-                            x[14] = (crs((Q[15] - Q[14]) % (1 << 32), 17) - F(Q[14], Q[13], Q[12]) - Q[
+                            x[14] = (crs((Q[15] - Q[14]) % (1 << 32), 17) - (Q[12] ^ (Q[14] & (Q[13] ^ Q[12]))) - Q[
                                 11] - 0xa679438e) % (1 << 32)
 
                             B3a = (Q[22] + x[14] + 0xc33707d6) & 0xFFFFFFFF
@@ -496,53 +492,49 @@ def B1(seed=None):
                                 x[8] = (crs((Q[9] - Q[8]) % (1 << 32), 7) - B0a) % (1 << 32)
                                 # x[ 9] = (crs((Q[10]-Q[9]) % (1 << 32) 9],12) - F(Q[ 9],Q[ 8],Q[ 7]) - Q[ 6] - 0x8b44f7af) % (1 << 32)
                                 # B0b = (Q[ 6] + 0x8b44f7af) & 0xFFFFFFFF
-                                x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - F(Q[9], Q[8], Q[7]) - B0b) % (
-                                        1 << 32)
+                                x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - (Q[7] ^ (Q[9] & (Q[8] ^ Q[7]))) - B0b) % (1 << 32)
                                 # x[12] = (crs((Q[13]-Q[12]) % (1 << 32), 7) - F(Q[12],Q[11],Q[10]) - Q[ 9] - 0x6b901122) % (1 << 32)
                                 # B1a=crs((Q[13]-Q[12]) % (1 << 32), 7) - F(Q[12],Q[11],Q[10]) - 0x6b901122
                                 x[12] = (B1a - Q[9]) % (1 << 32)
                                 # Q[25] = (Q[24] + cls(G(Q[24],Q[23],Q[22]) + Q[21] + x[9] + 0x21e1cde6, 5)) & 0xFFFFFFFF
                                 # B1b = (Q[21] + 0x21e1cde6) & 0xFFFFFFFF
-                                Q[25] = (Q[24] + cls((G(Q[24], Q[23], Q[22]) + B1b + x[9]) & 0xFFFFFFFF,
+                                Q[25] = (Q[24] + cls(((Q[23] ^ (Q[22] & (Q[24] ^ Q[23]))) + B1b + x[9]) & 0xFFFFFFFF,
                                                      5)) & 0xFFFFFFFF
                                 # Q[26] = (Q[25] + cls(G(Q[25],Q[24],Q[23]) + Q[22] + x[14] + 0xc33707d6, 9)) & 0xFFFFFFFF
                                 # B3a=Q[22] + x[14] + 0xc33707d6
-                                Q[26] = (Q[25] + cls((G(Q[25], Q[24], Q[23]) + B3a) & 0xFFFFFFFF,
-                                                     9)) & 0xFFFFFFFF
+                                Q[26] = (Q[25] + cls(((Q[24] ^ (Q[23] & (Q[25] ^ Q[24]))) + B3a) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
                                 # Q[27] = (Q[26] + cls(G(Q[26],Q[25],Q[24]) + Q[23] + x[3] + 0xf4d50d87, 14)) & 0xFFFFFFFF
                                 # B3b = (Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF
-                                Q[27] = (Q[26] + cls((G(Q[26], Q[25], Q[24]) + B3b) & 0xFFFFFFFF,
-                                                     14)) & 0xFFFFFFFF
+                                Q[27] = (Q[26] + cls(((Q[25] ^ (Q[24] & (Q[26] ^ Q[25]))) + B3b) & 0xFFFFFFFF, 14)) & 0xFFFFFFFF
                                 # Q[28] = (Q[27] + cls(G(Q[27],Q[26],Q[25]) + Q[24] + x[8] + 0x455a14ed, 20)) & 0xFFFFFFFF
                                 # B3c = (Q[24] + 0x455a14ed) & 0xFFFFFFFF
-                                Q[28] = (Q[27] + cls((G(Q[27], Q[26], Q[25]) + x[8] + B3c) & 0xFFFFFFFF,
+                                Q[28] = (Q[27] + cls(((Q[26] ^ (Q[25] & (Q[27] ^ Q[26]))) + x[8] + B3c) & 0xFFFFFFFF,
                                                      20)) & 0xFFFFFFFF
                                 # Q[29] = (Q[28] + cls(G(Q[28],Q[27],Q[26]) + Q[25] + x[13] + 0xa9e3e905, 5)) & 0xFFFFFFFF
                                 # B3d = (x[13] + 0xa9e3e905) & 0xFFFFFFFF
-                                Q[29] = (Q[28] + cls((G(Q[28], Q[27], Q[26]) + Q[25] + B3d) & 0xFFFFFFFF,
+                                Q[29] = (Q[28] + cls(((Q[27] ^ (Q[26] & (Q[28] ^ Q[27]))) + Q[25] + B3d) & 0xFFFFFFFF,
                                                      5)) & 0xFFFFFFFF
                                 # Q[30] = (Q[29] + cls( G(Q[29],Q[28],Q[27]) + Q[26] + x[2] + 0xfcefa3f8, 9)) & 0xFFFFFFFF
                                 # B2a = (x[2] + 0xfcefa3f8) & 0xFFFFFFFF
-                                Q[30] = (Q[29] + cls((G(Q[29], Q[28], Q[27]) + Q[26] + B2a) & 0xFFFFFFFF,
+                                Q[30] = (Q[29] + cls(((Q[28] ^ (Q[27] & (Q[29] ^ Q[28]))) + Q[26] + B2a) & 0xFFFFFFFF,
                                                      9)) & 0xFFFFFFFF
                                 # Q[31] = (Q[30] + cls( G(Q[30],Q[29],Q[28]) + Q[27] + x[7] + 0x676f02d9, 14)) & 0xFFFFFFFF
                                 # B3e = (x[7] + 0x676f02d9) & 0xFFFFFFFF
-                                Q[31] = (Q[30] + cls((G(Q[30], Q[29], Q[28]) + Q[27] + B3e) & 0xFFFFFFFF,
+                                Q[31] = (Q[30] + cls(((Q[29] ^ (Q[28] & (Q[30] ^ Q[29]))) + Q[27] + B3e) & 0xFFFFFFFF,
                                                      14)) & 0xFFFFFFFF
                                 Q[32] = (Q[31] + cls(
-                                    (G(Q[31], Q[30], Q[29]) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
+                                    ((Q[30] ^ (Q[29] & (Q[31] ^ Q[30]))) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
                                     20)) & 0xFFFFFFFF
                                 # Q[33] = (Q[32] + cls( H(Q[32],Q[31],Q[30]) + Q[29] + x[5] +0xfffa3942, 4)) & 0xFFFFFFFF
                                 # B1c = (x[5] +0xfffa3942) & 0xFFFFFFFF
-                                Q[33] = (Q[32] + cls((H(Q[32], Q[31], Q[30]) + Q[29] + B1c) & 0xFFFFFFFF,
+                                Q[33] = (Q[32] + cls(((Q[32] ^ Q[31] ^ Q[30]) + Q[29] + B1c) & 0xFFFFFFFF,
                                                      4)) & 0xFFFFFFFF
 
-                                Q[34] = (Q[33] + cls(
-                                    (H(Q[33], Q[32], Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
-                                    11)) & 0xFFFFFFFF
+                                Q[34] = (Q[33] + cls(((Q[33] ^ Q[32] ^ Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
+                                                     11)) & 0xFFFFFFFF
 
                                 # bit 16 nulovy
-                                zavorka_Q35 = (H(Q[34], Q[33], Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
+                                zavorka_Q35 = ((Q[34] ^ Q[33] ^ Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
 
                                 if (zavorka_Q35 & longmask[16]) != 0:
                                     continue
@@ -550,55 +542,53 @@ def B1(seed=None):
                                 Q[35] = ((Q[34] + cls(zavorka_Q35, 16)) & 0xFFFFFFFF) & 0xFFFFFFFF
                                 # Q[36] = (Q[35] + cls( H(Q[35],Q[34],Q[33]) + Q[32] + x[14] + 0xfde5380c, 23)) & 0xFFFFFFFF
                                 # B3f = (x[14] + 0xfde5380c) & 0xFFFFFFFF
-                                Q[36] = (Q[35] + cls((H(Q[35], Q[34], Q[33]) + Q[32] + B3f) & 0xFFFFFFFF,
+                                Q[36] = (Q[35] + cls(((Q[35] ^ Q[34] ^ Q[33]) + Q[32] + B3f) & 0xFFFFFFFF,
                                                      23)) & 0xFFFFFFFF
                                 # Q[37] = (Q[36] + cls( H(Q[36],Q[35],Q[34]) + Q[33] + x[1] + 0xa4beea44, 4)) & 0xFFFFFFFF
                                 # B1d = ( x[1] + 0xa4beea44) & 0xFFFFFFFF
-                                Q[37] = (Q[36] + cls((H(Q[36], Q[35], Q[34]) + Q[33] + B1d) & 0xFFFFFFFF,
+                                Q[37] = (Q[36] + cls(((Q[36] ^ Q[35] ^ Q[34]) + Q[33] + B1d) & 0xFFFFFFFF,
                                                      4)) & 0xFFFFFFFF
                                 # Q[38] = (Q[37] + cls( H(Q[37],Q[36],Q[35]) + Q[34] + x[4] + 0x4bdecfa9, 11)) & 0xFFFFFFFF
                                 # B3g = (x[4] + 0x4bdecfa9) & 0xFFFFFFFF
-                                Q[38] = (Q[37] + cls((H(Q[37], Q[36], Q[35]) + Q[34] + B3g) & 0xFFFFFFFF,
+                                Q[38] = (Q[37] + cls(((Q[37] ^ Q[36] ^ Q[35]) + Q[34] + B3g) & 0xFFFFFFFF,
                                                      11)) & 0xFFFFFFFF
                                 # Q[39] = (Q[38] + cls( H(Q[38],Q[37],Q[36]) + Q[35] + x[7] + 0xf6bb4b60, 16)) & 0xFFFFFFFF
                                 # B3h = (x[7] + 0xf6bb4b60) & 0xFFFFFFFF
-                                Q[39] = (Q[38] + cls((H(Q[38], Q[37], Q[36]) + Q[35] + B3h) & 0xFFFFFFFF,
+                                Q[39] = (Q[38] + cls(((Q[38] ^ Q[37] ^ Q[36]) + Q[35] + B3h) & 0xFFFFFFFF,
                                                      16)) & 0xFFFFFFFF
 
                                 # Q[40] = (Q[39] + cls( H(Q[39],Q[38],Q[37]) + Q[36] + x[10] +0xbebfbc70 , 23)) & 0xFFFFFFFF
                                 # B01a = (	x[10] +0xbebfbc70) & 0xFFFFFFFF
-                                Q[40] = (Q[39] + cls((H(Q[39], Q[38], Q[37]) + Q[36] + B01a) & 0xFFFFFFFF,
+                                Q[40] = (Q[39] + cls(((Q[39] ^ Q[38] ^ Q[37]) + Q[36] + B01a) & 0xFFFFFFFF,
                                                      23)) & 0xFFFFFFFF
                                 # Q[41] = (Q[40] + cls( H(Q[40],Q[39],Q[38]) + Q[37] + x[13] + 0x289b7ec6, 4)) & 0xFFFFFFFF
                                 # B3i = (x[13] + 0x289b7ec6) & 0xFFFFFFFF
-                                Q[41] = (Q[40] + cls((H(Q[40], Q[39], Q[38]) + Q[37] + B3i) & 0xFFFFFFFF,
+                                Q[41] = (Q[40] + cls(((Q[40] ^ Q[39] ^ Q[38]) + Q[37] + B3i) & 0xFFFFFFFF,
                                                      4)) & 0xFFFFFFFF
                                 # Q[42] = (Q[41] + cls( H(Q[41],Q[40],Q[39]) + Q[38] + x[0] + 0xeaa127fa, 11)) & 0xFFFFFFFF
                                 # B02a = (x[0] + 0xeaa127fa) & 0xFFFFFFFF
-                                Q[42] = (Q[41] + cls((H(Q[41], Q[40], Q[39]) + Q[38] + B02a) & 0xFFFFFFFF,
+                                Q[42] = (Q[41] + cls(((Q[41] ^ Q[40] ^ Q[39]) + Q[38] + B02a) & 0xFFFFFFFF,
                                                      11)) & 0xFFFFFFFF
                                 # Q[43] = (Q[42] + cls( H(Q[42],Q[41],Q[40]) + Q[39] + x[3] + 0xd4ef3085, 16)) & 0xFFFFFFFF
                                 # B3j = (x[3] + 0xd4ef3085) & 0xFFFFFFFF
-                                Q[43] = (Q[42] + cls((H(Q[42], Q[41], Q[40]) + Q[39] + B3j) & 0xFFFFFFFF,
+                                Q[43] = (Q[42] + cls(((Q[42] ^ Q[41] ^ Q[40]) + Q[39] + B3j) & 0xFFFFFFFF,
                                                      16)) & 0xFFFFFFFF
                                 # Q[44] = (Q[43] + cls( H(Q[43],Q[42],Q[41]) + Q[40] + x[6] + 0x4881d05, 23)) & 0xFFFFFFFF
                                 # B3k = (x[6] + 0x4881d05) & 0xFFFFFFFF
-                                Q[44] = (Q[43] + cls((H(Q[43], Q[42], Q[41]) + Q[40] + B3k) & 0xFFFFFFFF,
+                                Q[44] = (Q[43] + cls(((Q[43] ^ Q[42] ^ Q[41]) + Q[40] + B3k) & 0xFFFFFFFF,
                                                      23)) & 0xFFFFFFFF
-                                Q[45] = (Q[44] + cls(
-                                    (H(Q[44], Q[43], Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
-                                    4)) & 0xFFFFFFFF
-                                Q[46] = (Q[45] + cls(
-                                    (H(Q[45], Q[44], Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
-                                    11)) & 0xFFFFFFFF
+                                Q[45] = (Q[44] + cls(((Q[44] ^ Q[43] ^ Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
+                                                     4)) & 0xFFFFFFFF
+                                Q[46] = (Q[45] + cls(((Q[45] ^ Q[44] ^ Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
+                                                     11)) & 0xFFFFFFFF
 
                                 # Q[47] = (Q[46] + cls( H(Q[46],Q[45],Q[44]) + Q[43] + x[15] + 0x1fa27cf8, 16)) & 0xFFFFFFFF
                                 # B1e = (x[15] + 0x1fa27cf8) & 0xFFFFFFFF
-                                Q[47] = (Q[46] + cls((H(Q[46], Q[45], Q[44]) + Q[43] + B1e) & 0xFFFFFFFF,
+                                Q[47] = (Q[46] + cls(((Q[46] ^ Q[45] ^ Q[44]) + Q[43] + B1e) & 0xFFFFFFFF,
                                                      16)) & 0xFFFFFFFF
                                 # Q[48] = (Q[47] + cls( H(Q[47],Q[46],Q[45]) + Q[44] + x[2] + 0xc4ac5665, 23)) & 0xFFFFFFFF
                                 # B3l = (x[2] + 0xc4ac5665) & 0xFFFFFFFF
-                                Q[48] = (Q[47] + cls((H(Q[47], Q[46], Q[45]) + Q[44] + B3l) & 0xFFFFFFFF,
+                                Q[48] = (Q[47] + cls(((Q[47] ^ Q[46] ^ Q[45]) + Q[44] + B3l) & 0xFFFFFFFF,
                                                      23)) & 0xFFFFFFFF
 
                                 bitI = Q[46] & longmask[32]
@@ -608,7 +598,7 @@ def B1(seed=None):
 
                                 # Q[49] = (Q[48] + cls( I(Q[48],Q[47],Q[46]) + Q[45] + x[0] + 0xf4292244, 6)) & 0xFFFFFFFF
                                 # B02b = (x[0] + 0xf4292244) & 0xFFFFFFFF
-                                Q[49] = (Q[48] + cls((I(Q[48], Q[47], Q[46]) + Q[45] + B02b) & 0xFFFFFFFF,
+                                Q[49] = (Q[48] + cls(((Q[47] ^ (Q[48] | ~Q[46])) + Q[45] + B02b) & 0xFFFFFFFF,
                                                      6)) & 0xFFFFFFFF
 
                                 bitJ = Q[47] & longmask[32]
@@ -618,7 +608,7 @@ def B1(seed=None):
 
                                 # Q[50] = (Q[49] + cls( I(Q[49],Q[48],Q[47]) + Q[46]  + x[7] + 0x432aff97, 10)) & 0xFFFFFFFF
                                 # B3m = (x[7] + 0x432aff97) & 0xFFFFFFFF
-                                Q[50] = (Q[49] + cls((I(Q[49], Q[48], Q[47]) + Q[46] + B3m) & 0xFFFFFFFF,
+                                Q[50] = (Q[49] + cls(((Q[48] ^ (Q[49] | ~Q[47])) + Q[46] + B3m) & 0xFFFFFFFF,
                                                      10)) & 0xFFFFFFFF
 
                                 bit_I_neg = bitI ^ longmask[32]
@@ -628,74 +618,63 @@ def B1(seed=None):
 
                                 # Q[51] = (Q[50] + cls( I(Q[50],Q[49],Q[48]) + Q[47] + x[14] + 0xab9423a7, 15)) & 0xFFFFFFFF
                                 # B3n = (x[14] + 0xab9423a7) & 0xFFFFFFFF
-                                Q[51] = (Q[50] + cls((I(Q[50], Q[49], Q[48]) + Q[47] + B3n) & 0xFFFFFFFF,
+                                Q[51] = (Q[50] + cls(((Q[49] ^ (Q[50] | ~Q[48])) + Q[47] + B3n) & 0xFFFFFFFF,
                                                      15)) & 0xFFFFFFFF
                                 if (Q[51] & longmask[32]) != bitJ:
                                     continue
                                 # Q[52] = (Q[51] + cls( I(Q[51],Q[50],Q[49]) + Q[48] + x[5] + 0xfc93a039, 21)) & 0xFFFFFFFF
                                 # B1f = (x[5] + 0xfc93a039) & 0xFFFFFFFF
-                                Q[52] = (Q[51] + cls((I(Q[51], Q[50], Q[49]) + Q[48] + B1f) & 0xFFFFFFFF,
+                                Q[52] = (Q[51] + cls(((Q[50] ^ (Q[51] | ~Q[49])) + Q[48] + B1f) & 0xFFFFFFFF,
                                                      21)) & 0xFFFFFFFF
 
                                 if (Q[52] & longmask[32]) != bit_I_neg:
                                     continue
                                 Q[53] = (Q[52] + cls(
-                                    (I(Q[52], Q[51], Q[50]) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                    ((Q[51] ^ (Q[52] | ~Q[50])) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF, 6)) & 0xFFFFFFFF
                                 if (Q[53] & longmask[32]) != bitJ:
                                     continue
-                                Q[54] = (Q[53] + cls(
-                                    (I(Q[53], Q[52], Q[51]) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
-                                    10)) & 0xFFFFFFFF
+                                Q[54] = (Q[53] + cls(((Q[52] ^ (Q[53] | ~Q[51])) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
+                                                     10)) & 0xFFFFFFFF
                                 if (Q[54] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[55] = (Q[54] + cls(
-                                    (I(Q[54], Q[53], Q[52]) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
+                                Q[55] = (Q[54] + cls(((Q[53] ^ (Q[54] | ~Q[52])) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
+                                                     15)) & 0xFFFFFFFF
                                 if (Q[55] & longmask[32]) != bitJ:
                                     continue
-                                Q[56] = (Q[55] + cls(
-                                    (I(Q[55], Q[54], Q[53]) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[56] = (Q[55] + cls(((Q[54] ^ (Q[55] | ~Q[53])) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
+                                                     21)) & 0xFFFFFFFF
                                 if (Q[56] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[57] = (Q[56] + cls(
-                                    (I(Q[56], Q[55], Q[54]) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                Q[57] = (Q[56] + cls(((Q[55] ^ (Q[56] | ~Q[54])) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
+                                                     6)) & 0xFFFFFFFF
                                 if (Q[57] & longmask[32]) != bitJ:
                                     continue
-                                Q[58] = (Q[57] + cls(
-                                    (I(Q[57], Q[56], Q[55]) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
-                                    10)) & 0xFFFFFFFF
+                                Q[58] = (Q[57] + cls(((Q[56] ^ (Q[57] | ~Q[55])) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
+                                                     10)) & 0xFFFFFFFF
                                 if (Q[58] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[59] = (Q[58] + cls(
-                                    (I(Q[58], Q[57], Q[56]) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
+                                Q[59] = (Q[58] + cls(((Q[57] ^ (Q[58] | ~Q[56])) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
+                                                     15)) & 0xFFFFFFFF
                                 if (Q[59] & longmask[32]) != bitJ:
                                     continue
-                                Q[60] = (Q[59] + cls(
-                                    (I(Q[59], Q[58], Q[57]) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[60] = (Q[59] + cls(((Q[58] ^ (Q[59] | ~Q[57])) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
+                                                     21)) & 0xFFFFFFFF
                                 if (Q[60] & longmask[32]) != bitI:
                                     continue
                                 if (Q[60] & longmask[26]) != 0:
                                     continue
-                                Q[61] = (Q[60] + cls(
-                                    (I(Q[60], Q[59], Q[58]) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                Q[61] = (Q[60] + cls(((Q[59] ^ (Q[60] | ~Q[58])) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
+                                                     6)) & 0xFFFFFFFF
                                 if (Q[61] & longmask[32]) != bitJ:
                                     continue
                                 if (Q[61] & longmask[26]) != longmask[26]:
                                     continue
-                                zavorka_Q62 = (I(Q[61], Q[60], Q[59]) + Q[58] + x[11] + 0xbd3af235) & 0xFFFFFFFF
+                                zavorka_Q62 = ((Q[60] ^ (Q[61] | ~Q[59])) + Q[58] + x[11] + 0xbd3af235) & 0xFFFFFFFF
                                 Q[62] = (Q[61] + cls(zavorka_Q62, 10)) & 0xFFFFFFFF
-                                Q[63] = (Q[62] + cls(
-                                    (I(Q[62], Q[61], Q[60]) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
-                                Q[64] = (Q[63] + cls(
-                                    (I(Q[63], Q[62], Q[61]) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[63] = (Q[62] + cls(((Q[61] ^ (Q[62] | ~Q[60])) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
+                                                     15)) & 0xFFFFFFFF
+                                Q[64] = (Q[63] + cls(((Q[62] ^ (Q[63] | ~Q[61])) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
+                                                     21)) & 0xFFFFFFFF
 
                                 AA0 = IHV1[0] = (IHV0[0] + Q[61]) & 0xFFFFFFFF
                                 DD0 = IHV1[3] = (IHV0[3] + Q[62]) & 0xFFFFFFFF
@@ -726,9 +705,12 @@ def B1(seed=None):
                                 M[11] = (x[11] + 0x00008000) & 0xFFFFFFFF
                                 M[14] = (x[14] + 0x80000000) & 0xFFFFFFFF
 
+                                HIHV0 = IHV0.copy()
                                 md5.compress(HIHV0, M)  # mit a, b, c, d und M
                                 HIHV1 = HIHV0.copy()
                                 print(f"Block1: {os.getpid()}")
+                                print(f"{hex(Q[61])}")
+                                print(f"{hex(Q[64])}")
                                 print((HIHV1[0] - IHV1[0] - 0x80000000) % (1 << 32))
                                 print((HIHV1[1] - IHV1[1] - 0x82000000) % (1 << 32))
                                 print((HIHV1[2] - IHV1[2] - 0x82000000) % (1 << 32))
@@ -765,10 +747,10 @@ def B1(seed=None):
                                 # startTime = time.perf_counter()
 
                                 while True:
-                                    if not B2():
+                                    if not findBlock2():
                                         break
 
-                                time2 = time.perf_counter() - startTime
+                                time2 = time.perf_counter() - time1 - startTime
                                 # GetLocalTime(&now)
                                 #
                                 # printf("\n%02d.%02d.%04d %02d:%02d:%02d.%03d",
@@ -786,9 +768,12 @@ def B1(seed=None):
                                 print(f"AVERAGE time for the 2nd block {time5 / collision_count}")
                                 print(f"AVERAGE time for the complete {time3 / collision_count}")
                                 print(f"No. of collisions = {collision_count}")
-                                result = [f"AVERAGE time for the 1st block {time4 / collision_count}",
+                                result = [f"{os.getpid()}",
+                                          f"time for the 1st block {time1}",
+                                          f"time for the 2nd block {time2}",
+                                          f"AVERAGE time for the 1st block {time4 / collision_count}",
                                           f"AVERAGE time for the 2nd block {time5 / collision_count}",
-                                          f"AVERAGE time for the complete {time3 / collision_count}"]
+                                          f"AVERAGE time for {collision_count} complete collision {time3 / collision_count}"]
                                 # fcb = fopen( out_filename,"a" )
                                 # fprintf(fcb,"\n The second block collision took  : %f sec", time2)
                                 # sprintf(buffer,"%02d.%02d.%04d %02d:%02d:%02d.%03d\n",
@@ -796,7 +781,7 @@ def B1(seed=None):
                                 # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 # fwrite(buffer,1,strlen(buffer),fcb)
                                 print(result)
-                                filePath = os.getcwd() + "\\collisions\\collisions.txt"
+                                filePath = os.getcwd() + f"\\collisions\\collisions_{now}.txt"
                                 with open(filePath, "a+") as file:
                                     file.write(f"{result}\n")
                                     file.close()
@@ -805,14 +790,14 @@ def B1(seed=None):
 
 
 # =========================================================
-def B2():
+def findBlock2():
     Q = [0] * 65
     x = [0] * 16
 
     QM3 = P_IHV1[0]
     QM2 = P_IHV1[3]
-    CC0 = QM1 = P_IHV1[2]
-    BB0 = QM0 = P_IHV1[1]
+    QM1 = CC0 = P_IHV1[2]
+    QM0 = BB0 = P_IHV1[1]
     bitI = BB0 & longmask[32]
     bit_neg_I = (~BB0) & longmask[32]
 
@@ -960,21 +945,21 @@ def B2():
         Q[15] = (random.randint(0, (2 ** 32) - 1) & 0x00fc3ff7) + 0x7d020000
         Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x4ffc7ff7) + 0x20018008
 
-        x[1] = (crs((Q[2] - Q[1]) % (1 << 32), 12) - F(Q[1], QM0, QM1) - QM2 - 0xe8c7b756) % (1 << 32)
-        zavorka_Q17 = (G(Q[16], Q[15], Q[14]) + Q[13] + x[1] + 0xf61e2562) & 0xFFFFFFFF
+        x[1] = (crs((Q[2] - Q[1]) % (1 << 32), 12) - (QM1 ^ (Q[1] & (QM0 ^ QM1))) - QM2 - 0xe8c7b756) % (1 << 32)
+        zavorka_Q17 = ((Q[15] ^ (Q[14] & (Q[16] ^ Q[15]))) + Q[13] + x[1] + 0xf61e2562) & 0xFFFFFFFF
         if (zavorka_Q17 & 0x07000000) == 0x07000000:
             continue
         Q[17] = (Q[16] + cls(zavorka_Q17, 5)) & 0xFFFFFFFF
         if ((Q[17] ^ Q[16]) & 0x80028008) != 0:
             continue
-        x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - F(Q[6], Q[5], Q[4]) - Q[3] - 0xa8304613) % (1 << 32)
-        Q[18] = (Q[17] + cls((G(Q[17], Q[16], Q[15]) + Q[14] + x[6] + 0xc040b340) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
+        x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - (Q[4] ^ (Q[6] & (Q[5] ^ Q[4]))) - Q[3] - 0xa8304613) % (1 << 32)
+        Q[18] = (Q[17] + cls(((Q[16] ^ (Q[15] & (Q[17] ^ Q[16]))) + Q[14] + x[6] + 0xc040b340) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
         if ((Q[18] ^ Q[17]) & 0xa0020000) != 0x00020000:
             continue
 
-        x[11] = (crs((Q[12] - Q[11]) % (1 << 32), 22) - F(Q[11], Q[10], Q[9]) - Q[8] - 0x895cd7be) % (1 << 32)
+        x[11] = (crs((Q[12] - Q[11]) % (1 << 32), 22) - (Q[9] ^ (Q[11] & (Q[10] ^ Q[9]))) - Q[8] - 0x895cd7be) % (1 << 32)
 
-        zavorka_Q19 = (G(Q[18], Q[17], Q[16]) + Q[15] + x[11] + 0x265e5a51) & 0xFFFFFFFF
+        zavorka_Q19 = ((Q[17] ^ (Q[16] & (Q[18] ^ Q[17]))) + Q[15] + x[11] + 0x265e5a51) & 0xFFFFFFFF
         if (zavorka_Q19 & 0x0003fff8) == 0x0003fff8:
             continue
 
@@ -983,8 +968,8 @@ def B2():
             continue
         if (Q[19] & longmask[18]) != 0:
             continue
-        x[10] = (crs((Q[11] - Q[10]) % (1 << 32), 17) - F(Q[10], Q[9], Q[8]) - Q[7] - 0xffff5bb1) % (1 << 32)
-        x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - F(Q[15], Q[14], Q[13]) - Q[12] - 0x49b40821) % (1 << 32)
+        x[10] = (crs((Q[11] - Q[10]) % (1 << 32), 17) - (Q[8] ^ (Q[10] & (Q[9] ^ Q[8]))) - Q[7] - 0xffff5bb1) % (1 << 32)
+        x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - (Q[13] ^ (Q[15] & (Q[14] ^ Q[13]))) - Q[12] - 0x49b40821) % (1 << 32)
 
         for cq1q2 in range(longmask[jednicky + 1]):
 
@@ -993,34 +978,34 @@ def B2():
 
             Q[1] = ((random.randint(0, (2 ** 32) - 1) & spolecna_maska) + tQ1) & 0xFFFFFFFF
             Q[2] = ((Q[1] & spolecna_maska) + tQ2) & 0xFFFFFFFF
-            x[0] = (crs((Q[1] - QM0) % (1 << 32), 7) - F(QM0, QM1, QM2) - QM3 - 0xd76aa478) % (1 << 32)
-            zavorka_Q20 = (G(Q[19], Q[18], Q[17]) + Q[16] + x[0] + 0xe9b6c7aa) & 0xFFFFFFFF
+            x[0] = (crs((Q[1] - QM0) % (1 << 32), 7) - (QM2 ^ (QM0 & (QM1 ^ QM2))) - QM3 - 0xd76aa478) % (1 << 32)
+            zavorka_Q20 = ((Q[18] ^ (Q[17] & (Q[19] ^ Q[18]))) + Q[16] + x[0] + 0xe9b6c7aa) & 0xFFFFFFFF
             if (zavorka_Q20 & 0xe0000000) == 0:
                 continue
             Q[20] = (Q[19] + cls(zavorka_Q20, 20)) & 0xFFFFFFFF
             if (Q[20] & longmask[32]) != 0:
                 continue
-            x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (1 << 32)
-            Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
+            x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - (Q[3] ^ (Q[5] & (Q[4] ^ Q[3]))) - Q[2] - 0x4787c62a) % (1 << 32)
+            Q[21] = (Q[20] + cls(((Q[19] ^ (Q[18] & (Q[20] ^ Q[19]))) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
             if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
                 continue
-            Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
+            Q[22] = (Q[21] + cls(((Q[20] ^ (Q[19] & (Q[21] ^ Q[20]))) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
             if (Q[22] & longmask[32]) != 0:
                 continue
-            zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
+            zavorka_Q23 = ((Q[21] ^ (Q[20] & (Q[22] ^ Q[21]))) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
             if (zavorka_Q23 & longmask[18]) != 0:
                 continue
             Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
             if (Q[23] & longmask[32]) != 0:
                 continue
-            x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (1 << 32)
-            Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
+            x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (1 << 32)
+            Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
             if (Q[24] & longmask[32]) != longmask[32]:
                 continue
 
-            x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - F(Q[2], Q[1], QM0) - QM1 - 0x242070db) % (1 << 32)
-            x[13] = (crs((Q[14] - Q[13]) % (1 << 32), 12) - F(Q[13], Q[12], Q[11]) - Q[10] - 0xfd987193) % (1 << 32)
-            x[14] = (crs((Q[15] - Q[14]) % (1 << 32), 17) - F(Q[14], Q[13], Q[12]) - Q[11] - 0xa679438e) % (1 << 32)
+            x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - (QM0 ^ (Q[2] & (Q[1] ^ QM0))) - QM1 - 0x242070db) % (1 << 32)
+            x[13] = (crs((Q[14] - Q[13]) % (1 << 32), 12) - (Q[11] ^ (Q[13] & (Q[12] ^ Q[11]))) - Q[10] - 0xfd987193) % (1 << 32)
+            x[14] = (crs((Q[15] - Q[14]) % (1 << 32), 17) - (Q[12] ^ (Q[14] & (Q[13] ^ Q[12]))) - Q[11] - 0xa679438e) % (1 << 32)
 
             for cq4 in range(64):
 
@@ -1029,140 +1014,140 @@ def B2():
 
                 Q[4] = ((temp2Q4 & ~0x01c0e000) + Hi + Lo) & 0xFFFFFFFF
 
-                x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (1 << 32)
-                Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
+                x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - (Q[2] ^ (Q[4] & (Q[3] ^ Q[2]))) - Q[1] - 0xf57c0faf) % (1 << 32)
+                Q[24] = (Q[23] + cls(((Q[22] ^ (Q[21] & (Q[23] ^ Q[22]))) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
                                      20)) & 0xFFFFFFFF
                 if (Q[24] & longmask[32]) != longmask[32]:
                     continue
 
-                x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - F(Q[3], Q[2], Q[1]) - QM0 - 0xc1bdceee) % (1 << 32)
-                x[7] = (crs((Q[8] - Q[7]) % (1 << 32), 22) - F(Q[7], Q[6], Q[5]) - Q[4] - 0xfd469501) % (1 << 32)
+                x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - (Q[1] ^ (Q[3] & (Q[2] ^ Q[1]))) - QM0 - 0xc1bdceee) % (1 << 32)
+                x[7] = (crs((Q[8] - Q[7]) % (1 << 32), 22) - (Q[5] ^ (Q[7] & (Q[6] ^ Q[5]))) - Q[4] - 0xfd469501) % (1 << 32)
                 for cq9 in range(256):
 
                     Q[9] = temp2Q9 ^ mask2Q9[cq9]
-                    x[8] = (crs((Q[9] - Q[8]) % (1 << 32), 7) - F(Q[8], Q[7], Q[6]) - Q[5] - 0x698098d8) % (1 << 32)
-                    x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - F(Q[9], Q[8], Q[7]) - Q[6] - 0x8b44f7af) % (1 << 32)
-                    x[12] = (crs((Q[13] - Q[12]) % (1 << 32), 7) - F(Q[12], Q[11], Q[10]) - Q[9] - 0x6b901122) % (
-                            1 << 32)
+                    x[8] = (crs((Q[9] - Q[8]) % (1 << 32), 7) - (Q[6] ^ (Q[8] & (Q[7] ^ Q[6]))) - Q[5] - 0x698098d8) % (1 << 32)
+                    x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - (Q[7] ^ (Q[9] & (Q[8] ^ Q[7]))) - Q[6] - 0x8b44f7af) % (1 << 32)
+                    x[12] = (crs((Q[13] - Q[12]) % (1 << 32), 7) - (Q[10] ^ (Q[12] & (Q[11] ^ Q[10]))) - Q[9] - 0x6b901122) % (
+                                1 << 32)
 
-                    Q[25] = (Q[24] + cls((G(Q[24], Q[23], Q[22]) + Q[21] + x[9] + 0x21e1cde6) & 0xFFFFFFFF,
+                    Q[25] = (Q[24] + cls(((Q[23] ^ (Q[22] & (Q[24] ^ Q[23]))) + Q[21] + x[9] + 0x21e1cde6) & 0xFFFFFFFF,
                                          5)) & 0xFFFFFFFF
-                    Q[26] = (Q[25] + cls((G(Q[25], Q[24], Q[23]) + Q[22] + x[14] + 0xc33707d6) & 0xFFFFFFFF,
+                    Q[26] = (Q[25] + cls(((Q[24] ^ (Q[23] & (Q[25] ^ Q[24]))) + Q[22] + x[14] + 0xc33707d6) & 0xFFFFFFFF,
                                          9)) & 0xFFFFFFFF
-                    Q[27] = (Q[26] + cls((G(Q[26], Q[25], Q[24]) + Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF,
+                    Q[27] = (Q[26] + cls(((Q[25] ^ (Q[24] & (Q[26] ^ Q[25]))) + Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF,
                                          14)) & 0xFFFFFFFF
-                    Q[28] = (Q[27] + cls((G(Q[27], Q[26], Q[25]) + Q[24] + x[8] + 0x455a14ed) & 0xFFFFFFFF,
+                    Q[28] = (Q[27] + cls(((Q[26] ^ (Q[25] & (Q[27] ^ Q[26]))) + Q[24] + x[8] + 0x455a14ed) & 0xFFFFFFFF,
                                          20)) & 0xFFFFFFFF
-                    Q[29] = (Q[28] + cls((G(Q[28], Q[27], Q[26]) + Q[25] + x[13] + 0xa9e3e905) & 0xFFFFFFFF,
+                    Q[29] = (Q[28] + cls(((Q[27] ^ (Q[26] & (Q[28] ^ Q[27]))) + Q[25] + x[13] + 0xa9e3e905) & 0xFFFFFFFF,
                                          5)) & 0xFFFFFFFF
-                    Q[30] = (Q[29] + cls((G(Q[29], Q[28], Q[27]) + Q[26] + x[2] + 0xfcefa3f8) & 0xFFFFFFFF,
+                    Q[30] = (Q[29] + cls(((Q[28] ^ (Q[27] & (Q[29] ^ Q[28]))) + Q[26] + x[2] + 0xfcefa3f8) & 0xFFFFFFFF,
                                          9)) & 0xFFFFFFFF
-                    Q[31] = (Q[30] + cls((G(Q[30], Q[29], Q[28]) + Q[27] + x[7] + 0x676f02d9) & 0xFFFFFFFF,
+                    Q[31] = (Q[30] + cls(((Q[29] ^ (Q[28] & (Q[30] ^ Q[29]))) + Q[27] + x[7] + 0x676f02d9) & 0xFFFFFFFF,
                                          14)) & 0xFFFFFFFF
-                    Q[32] = (Q[31] + cls((G(Q[31], Q[30], Q[29]) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
+                    Q[32] = (Q[31] + cls(((Q[30] ^ (Q[29] & (Q[31] ^ Q[30]))) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
                                          20)) & 0xFFFFFFFF
-                    Q[33] = (Q[32] + cls((H(Q[32], Q[31], Q[30]) + Q[29] + x[5] + 0xfffa3942) & 0xFFFFFFFF,
+                    Q[33] = (Q[32] + cls(((Q[32] ^ Q[31] ^ Q[30]) + Q[29] + x[5] + 0xfffa3942) & 0xFFFFFFFF,
                                          4)) & 0xFFFFFFFF
-                    Q[34] = (Q[33] + cls((H(Q[33], Q[32], Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
+                    Q[34] = (Q[33] + cls(((Q[33] ^ Q[32] ^ Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
                                          11)) & 0xFFFFFFFF
 
-                    zavorka_Q35 = (H(Q[34], Q[33], Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
+                    zavorka_Q35 = ((Q[34] ^ Q[33] ^ Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
                     if (zavorka_Q35 & longmask[16]) != longmask[16]:
                         continue
                     Q[35] = (Q[34] + cls(zavorka_Q35, 16)) & 0xFFFFFFFF
 
-                    Q[36] = (Q[35] + cls((H(Q[35], Q[34], Q[33]) + Q[32] + x[14] + 0xfde5380c) & 0xFFFFFFFF,
+                    Q[36] = (Q[35] + cls(((Q[35] ^ Q[34] ^ Q[33]) + Q[32] + x[14] + 0xfde5380c) & 0xFFFFFFFF,
                                          23)) & 0xFFFFFFFF
-                    Q[37] = (Q[36] + cls((H(Q[36], Q[35], Q[34]) + Q[33] + x[1] + 0xa4beea44) & 0xFFFFFFFF,
+                    Q[37] = (Q[36] + cls(((Q[36] ^ Q[35] ^ Q[34]) + Q[33] + x[1] + 0xa4beea44) & 0xFFFFFFFF,
                                          4)) & 0xFFFFFFFF
-                    Q[38] = (Q[37] + cls((H(Q[37], Q[36], Q[35]) + Q[34] + x[4] + 0x4bdecfa9) & 0xFFFFFFFF,
+                    Q[38] = (Q[37] + cls(((Q[37] ^ Q[36] ^ Q[35]) + Q[34] + x[4] + 0x4bdecfa9) & 0xFFFFFFFF,
                                          11)) & 0xFFFFFFFF
-                    Q[39] = (Q[38] + cls((H(Q[38], Q[37], Q[36]) + Q[35] + x[7] + 0xf6bb4b60) & 0xFFFFFFFF,
+                    Q[39] = (Q[38] + cls(((Q[38] ^ Q[37] ^ Q[36]) + Q[35] + x[7] + 0xf6bb4b60) & 0xFFFFFFFF,
                                          16)) & 0xFFFFFFFF
-                    Q[40] = (Q[39] + cls((H(Q[39], Q[38], Q[37]) + Q[36] + x[10] + 0xbebfbc70) & 0xFFFFFFFF,
+                    Q[40] = (Q[39] + cls(((Q[39] ^ Q[38] ^ Q[37]) + Q[36] + x[10] + 0xbebfbc70) & 0xFFFFFFFF,
                                          23)) & 0xFFFFFFFF
-                    Q[41] = (Q[40] + cls((H(Q[40], Q[39], Q[38]) + Q[37] + x[13] + 0x289b7ec6) & 0xFFFFFFFF,
+                    Q[41] = (Q[40] + cls(((Q[40] ^ Q[39] ^ Q[38]) + Q[37] + x[13] + 0x289b7ec6) & 0xFFFFFFFF,
                                          4)) & 0xFFFFFFFF
-                    Q[42] = (Q[41] + cls((H(Q[41], Q[40], Q[39]) + Q[38] + x[0] + 0xeaa127fa) & 0xFFFFFFFF,
+                    Q[42] = (Q[41] + cls(((Q[41] ^ Q[40] ^ Q[39]) + Q[38] + x[0] + 0xeaa127fa) & 0xFFFFFFFF,
                                          11)) & 0xFFFFFFFF
-                    Q[43] = (Q[42] + cls((H(Q[42], Q[41], Q[40]) + Q[39] + x[3] + 0xd4ef3085) & 0xFFFFFFFF,
+                    Q[43] = (Q[42] + cls(((Q[42] ^ Q[41] ^ Q[40]) + Q[39] + x[3] + 0xd4ef3085) & 0xFFFFFFFF,
                                          16)) & 0xFFFFFFFF
-                    Q[44] = (Q[43] + cls((H(Q[43], Q[42], Q[41]) + Q[40] + x[6] + 0x4881d05) & 0xFFFFFFFF,
+                    Q[44] = (Q[43] + cls(((Q[43] ^ Q[42] ^ Q[41]) + Q[40] + x[6] + 0x4881d05) & 0xFFFFFFFF,
                                          23)) & 0xFFFFFFFF
-                    Q[45] = (Q[44] + cls((H(Q[44], Q[43], Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
+                    Q[45] = (Q[44] + cls(((Q[44] ^ Q[43] ^ Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
                                          4)) & 0xFFFFFFFF
-                    Q[46] = (Q[45] + cls((H(Q[45], Q[44], Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
+                    Q[46] = (Q[45] + cls(((Q[45] ^ Q[44] ^ Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
                                          11)) & 0xFFFFFFFF
-                    Q[47] = (Q[46] + cls((H(Q[46], Q[45], Q[44]) + Q[43] + x[15] + 0x1fa27cf8) & 0xFFFFFFFF,
+                    Q[47] = (Q[46] + cls(((Q[46] ^ Q[45] ^ Q[44]) + Q[43] + x[15] + 0x1fa27cf8) & 0xFFFFFFFF,
                                          16)) & 0xFFFFFFFF
-                    Q[48] = (Q[47] + cls((H(Q[47], Q[46], Q[45]) + Q[44] + x[2] + 0xc4ac5665) & 0xFFFFFFFF,
+                    Q[48] = (Q[47] + cls(((Q[47] ^ Q[46] ^ Q[45]) + Q[44] + x[2] + 0xc4ac5665) & 0xFFFFFFFF,
                                          23)) & 0xFFFFFFFF
 
                     bitJ = Q[46] & longmask[32]
                     if (Q[48] & longmask[32]) != bitJ:
                         continue
 
-                    Q[49] = (Q[48] + cls((I(Q[48], Q[47], Q[46]) + Q[45] + x[0] + 0xf4292244) & 0xFFFFFFFF,
+                    Q[49] = (Q[48] + cls(((Q[47] ^ (Q[48] | ~Q[46])) + Q[45] + x[0] + 0xf4292244) & 0xFFFFFFFF,
                                          6)) & 0xFFFFFFFF
                     bitK = Q[47] & longmask[32]
                     if (Q[49] & longmask[32]) != bitK:
                         continue
 
-                    Q[50] = (Q[49] + cls((I(Q[49], Q[48], Q[47]) + Q[46] + x[7] + 0x432aff97) & 0xFFFFFFFF,
+                    Q[50] = (Q[49] + cls(((Q[48] ^ (Q[49] | ~Q[47])) + Q[46] + x[7] + 0x432aff97) & 0xFFFFFFFF,
                                          10)) & 0xFFFFFFFF
                     bit_J_neg = bitJ ^ longmask[32]
                     if (Q[50] & longmask[32]) != bit_J_neg:
                         continue
 
-                    Q[51] = (Q[50] + cls((I(Q[50], Q[49], Q[48]) + Q[47] + x[14] + 0xab9423a7) & 0xFFFFFFFF,
+                    Q[51] = (Q[50] + cls(((Q[49] ^ (Q[50] | ~Q[48])) + Q[47] + x[14] + 0xab9423a7) & 0xFFFFFFFF,
                                          15)) & 0xFFFFFFFF
                     if (Q[51] & longmask[32]) != bitK:
                         continue
-                    Q[52] = (Q[51] + cls((I(Q[51], Q[50], Q[49]) + Q[48] + x[5] + 0xfc93a039) & 0xFFFFFFFF,
+                    Q[52] = (Q[51] + cls(((Q[50] ^ (Q[51] | ~Q[49])) + Q[48] + x[5] + 0xfc93a039) & 0xFFFFFFFF,
                                          21)) & 0xFFFFFFFF
                     if (Q[52] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[53] = (Q[52] + cls((I(Q[52], Q[51], Q[50]) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF,
+                    Q[53] = (Q[52] + cls(((Q[51] ^ (Q[52] | ~Q[50])) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF,
                                          6)) & 0xFFFFFFFF
                     if (Q[53] & longmask[32]) != bitK:
                         continue
-                    Q[54] = (Q[53] + cls((I(Q[53], Q[52], Q[51]) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
+                    Q[54] = (Q[53] + cls(((Q[52] ^ (Q[53] | ~Q[51])) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
                                          10)) & 0xFFFFFFFF
                     if (Q[54] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[55] = (Q[54] + cls((I(Q[54], Q[53], Q[52]) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
+                    Q[55] = (Q[54] + cls(((Q[53] ^ (Q[54] | ~Q[52])) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
                                          15)) & 0xFFFFFFFF
                     if (Q[55] & longmask[32]) != bitK:
                         continue
-                    Q[56] = (Q[55] + cls((I(Q[55], Q[54], Q[53]) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
+                    Q[56] = (Q[55] + cls(((Q[54] ^ (Q[55] | ~Q[53])) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
                                          21)) & 0xFFFFFFFF
                     if (Q[56] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[57] = (Q[56] + cls((I(Q[56], Q[55], Q[54]) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
+                    Q[57] = (Q[56] + cls(((Q[55] ^ (Q[56] | ~Q[54])) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
                                          6)) & 0xFFFFFFFF
                     if (Q[57] & longmask[32]) != bitK:
                         continue
-                    Q[58] = (Q[57] + cls((I(Q[57], Q[56], Q[55]) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
+                    Q[58] = (Q[57] + cls(((Q[56] ^ (Q[57] | ~Q[55])) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
                                          10)) & 0xFFFFFFFF
                     if (Q[58] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[59] = (Q[58] + cls((I(Q[58], Q[57], Q[56]) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
+                    Q[59] = (Q[58] + cls(((Q[57] ^ (Q[58] | ~Q[56])) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
                                          15)) & 0xFFFFFFFF
                     if (Q[59] & longmask[32]) != bitK:
                         continue
-                    Q[60] = (Q[59] + cls((I(Q[59], Q[58], Q[57]) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
+                    Q[60] = (Q[59] + cls(((Q[58] ^ (Q[59] | ~Q[57])) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
                                          21)) & 0xFFFFFFFF
                     if (Q[60] & longmask[32]) != bitJ:
                         continue
                     if (Q[60] & longmask[26]) != 0:
                         continue
-                    Q[61] = (Q[60] + cls((I(Q[60], Q[59], Q[58]) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
+                    Q[61] = (Q[60] + cls(((Q[59] ^ (Q[60] | ~Q[58])) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
                                          6)) & 0xFFFFFFFF
                     if (Q[61] & longmask[32]) != bitK:
                         continue
                     if (Q[61] & longmask[26]) != longmask[26]:
                         continue
-                    zavorka_Q62 = (I(Q[61], Q[60], Q[59]) + Q[58] + x[11] + 0xbd3af235) & 0xFFFFFFFF
+                    zavorka_Q62 = ((Q[60] ^ (Q[61] | ~Q[59])) + Q[58] + x[11] + 0xbd3af235) & 0xFFFFFFFF
                     if (zavorka_Q62 & 0x003f8000) == 0:
                         continue
 
@@ -1171,17 +1156,17 @@ def B2():
                         continue
                     if (Q[62] & longmask[26]) != longmask[26]:
                         continue
-                    Q[63] = (Q[62] + cls((I(Q[62], Q[61], Q[60]) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
+                    Q[63] = (Q[62] + cls(((Q[61] ^ (Q[62] | ~Q[60])) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
                                          15)) & 0xFFFFFFFF
                     if (Q[63] & longmask[32]) != bitK:
                         continue
                     if (Q[63] & longmask[26]) != longmask[26]:
                         continue
-                    Q[64] = (Q[63] + cls((I(Q[63], Q[62], Q[61]) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
+                    Q[64] = (Q[63] + cls(((Q[62] ^ (Q[63] | ~Q[61])) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
                                          21)) & 0xFFFFFFFF
                     if (Q[64] & longmask[26]) != longmask[26]:
                         continue  # not necessary (Sasaki), try to remove
-                    print("Last loop 3!!!")
+
                     IHV2 = [0] * 4
                     IHV2[0] = (P_IHV1[0] + Q[61]) & 0xFFFFFFFF
                     IHV2[1] = (P_IHV1[1] + Q[64]) & 0xFFFFFFFF
@@ -1194,9 +1179,10 @@ def B2():
                     M[11] = (x[11] - 0x00008000) % (1 << 32)
                     M[14] = (x[14] - 0x80000000) % (1 << 32)
 
-                    md5.compress(P_HIHV1, M)
+                    temp = P_HIHV1.copy()
+                    md5.compress(temp, M)
 
-                    HIHV2 = P_HIHV1.copy()
+                    HIHV2 = temp.copy()
                     print(f"Block2: {os.getpid()}")
                     print((HIHV2[0] - IHV2[0]) % (1 << 32))
                     print((HIHV2[1] - IHV2[1]) % (1 << 32))
@@ -1214,9 +1200,9 @@ def B2():
                     md5.compress(P_IHV1, x)  # Compression of P_HIHV1 already done before ^
                     # print(P_IHV1)
                     print(f"Hash digest H: {P_IHV1}")
-                    print(f"Hash digest H': {P_HIHV1}")
+                    print(f"Hash digest H': {temp}")
                     for i in range(len(P_IHV1)):
-                        if P_IHV1[i] != P_HIHV1[i]:
+                        if P_IHV1[i] != temp[i]:
                             return -1
                     print("SUPER DONEEEEEEEE!!!!!!!!!!")
                     #     print("Check: The same MD5 hash\n" )
@@ -1261,27 +1247,35 @@ def B2():
 
 
 def main():
-    print("The program creates text file collision_md5_HEXnumber.TXT, containing collisions.")
+    print("The program creates 2 text files:")
+    print(f"collisions_{now}.txt, containing collisions.")
+    print(f"states_{now}.txt, containing the states of the used random number generator.")
     print("The program takes pseudorandom numbers and its behaviour is probabilistic.")
-    print("If you want to have collisions in several seconds,")
-    print("wait a moment and eventually stop the program and start it again.")
     print("You can restart the program from the same point using HEXnumber as a parameter.")
 
     # sprintf(out_filename, "collision_md5_%08X.TXT", X)
     newDir = os.getcwd() + "\\collisions"
     if not os.path.exists(newDir):
         os.makedirs(newDir)
+    filePath = os.getcwd() + f"\\collisions\\collisions_{now}.txt"
+    with open(filePath, "a+") as file:
+        file.write(f"Starting time: {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}\n")
+        file.close()
 
     cpuCount = int(cpu_count() * 0.75)
-    seeds = [((i+1) * 3333) for i in range(cpuCount)] # [None] * cpuCount
+    seeds = [None] * cpuCount
+    if len(sys.argv) > 1 and type(sys.argv[1]) is int:
+        seedStep = sys.argv[1]
+        seeds = [((i + 1) * seedStep) for i in range(cpuCount)]  # [None] * cpuCount
     with Pool(cpuCount) as p:
         p.map(findCollision, seeds)
         p.terminate()
 
 
 def findCollision(seed):
+    random.seed(seed)
     while True:
-        B1(seed)
+        findBlock1()
 
 
 if __name__ == '__main__':

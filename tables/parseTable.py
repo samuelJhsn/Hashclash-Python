@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 
-# TODO: Abgleich ob Block fertig (je Block), (multi) message modification Techniken
 # Finding MD5 collisions on a notebook PC using multi-message modifications
 # Tunnels in hash functions: MD5 collisions within a minute
 

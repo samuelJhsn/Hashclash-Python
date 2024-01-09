@@ -130,8 +130,13 @@ maskQ13 = [(0x2 * (k % 4) + 0x10 * (k // 4 % 2) + 0x40 * (k // 8 % 2) +
             0x8000000 * (k // 1024)) for k in range(len(maskQ13))]
 
 
-def B1(seed=None):
-    random.seed(seed)
+def B1():
+    print(f"{os.getpid()}: state is {random.getstate()}")
+    filePath = os.getcwd() + "\\collisions\\states.txt"
+    with open(filePath, "a+") as file:
+        file.write(f"{os.getpid()}: state is {random.getstate()}\n\n")
+        file.close()
+
     global Q
     x = [0] * 16
     IHV1, IHV0, HIHV1, HIHV0 = [0] * 4, [0] * 4, [0] * 4, [0] * 4  # ulong
@@ -258,8 +263,7 @@ def B1(seed=None):
         # Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x03dfff88)
         # + 0x20000000 + (Q[15] & 0x80000000) + ((~Q[15]) & 0x00200000)
 
-        Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x03dfff88) + 0x20000000 + (Q[15] & 0x80000000) + (
-                (~Q[15]) & 0x00200000)
+        Q[16] = (random.randint(0, (2 ** 32) - 1) & 0x03dfff88) + 0x20000000 + (Q[15] & 0x80000000) + ((~Q[15]) & 0x00200000)
         # Q[17]         = ^1v. .... .... ..0. ^... .... .... ^...
         # position   RNG  = ..** **** **** **.* .*** **** **** .***  0x3ffd7ff7
         # position   NUL  = .... .... .... ..*. .... .... .... ....  0x00020000
@@ -315,8 +319,7 @@ def B1(seed=None):
         if (Q[23] & longmask[32]) != 0:
             continue
 
-        Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                             20)) & 0xFFFFFFFF
+        Q[24] = md5_step(G, Q[20], Q[23], Q[22], Q[21], x[4], 0xe7d3fbc8, 20)
         if (Q[24] & longmask[32]) != longmask[32]:
             continue
 
@@ -348,10 +351,8 @@ def B1(seed=None):
             Q[21] = tempq21
 
             Q[10] = tempq10 ^ maskQ10[Q10]
-            x[10] = ((crs((Q[11] - Q[10]) % (1 << 32), 17) - F(Q[10], Q[9], Q[8]) - Q[7] - 0xffff5bb1) % (
-                    1 << 32)) % (1 << 32)
-            Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
-                                 9)) & 0xFFFFFFFF
+            x[10] = md5_reverse_step(11, 17, 0xffff5bb1)
+            Q[22] = md5_step(G, Q[18], Q[21], Q[20], Q[19], x[10], 0x2441453, 9)
             if (Q[22] & longmask[32]) != bit_Q15_32:
                 continue
             zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
@@ -360,8 +361,7 @@ def B1(seed=None):
             Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
             if (Q[23] & longmask[32]) != 0:
                 continue
-            Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                                 20)) & 0xFFFFFFFF
+            Q[24] = md5_step(G, Q[20], Q[23], Q[22], Q[21], x[4], 0xe7d3fbc8, 20)
             if (Q[24] & longmask[32]) != longmask[32]:
                 continue
 
@@ -373,18 +373,14 @@ def B1(seed=None):
                 x[1] = tempx1
                 x[15] = tempx15
                 Q[20] = tempq20 ^ maskQ20[Q20]
-                x[0] = (crs((Q[20] - Q[19]) % (1 << 32), 20) - G(Q[19], Q[18], Q[17]) - Q[16] - 0xe9b6c7aa) % (
-                        1 << 32)
+                x[0] = (crs((Q[20] - Q[19]) % (1 << 32), 20) - G(Q[19], Q[18], Q[17]) - Q[16] - 0xe9b6c7aa) % (1 << 32)
                 Q[1] = md5_step(F, QM3, QM0, QM1, QM2, x[0], 0xd76aa478, 7)
                 Q[2] = md5_step(F, QM2, Q[1], QM0, QM1, x[1], 0xe8c7b756, 12)
-                x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (
-                        1 << 32)
-                Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
-                                     5)) & 0xFFFFFFFF  # was missing
+                x[5] = md5_reverse_step(6, 12, 0x4787c62a)
+                Q[21] = md5_step(G, Q[17], Q[20], Q[19], Q[18], x[5], 0xd62f105d, 5)  # was missing
                 if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
                     continue
-                Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
-                                     9)) & 0xFFFFFFFF
+                Q[22] = md5_step(G, Q[18], Q[21], Q[20], Q[19], x[10], 0x2441453, 9)
                 if (Q[22] & longmask[32]) != bit_Q15_32:
                     continue
                 zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
@@ -394,8 +390,7 @@ def B1(seed=None):
                 if (Q[23] & longmask[32]) != 0:
                     continue
                 x[4] = md5_reverse_step(5, 7, 0xf57c0faf)
-                Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                                     20)) & 0xFFFFFFFF
+                Q[24] = md5_step(G, Q[20], Q[23], Q[22], Q[21], x[4], 0xe7d3fbc8, 20)
                 if (Q[24] & longmask[32]) != longmask[32]:
                     continue
 
@@ -407,32 +402,24 @@ def B1(seed=None):
                     Q[4] = tempq4
                     Q[14] = tempq14
                     Q[13] = tempq13 ^ maskQ13[Q13]
-                    x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - G(Q[16], Q[15], Q[14]) - Q[
-                        13] - 0xf61e2562) % (1 << 32)
-                    Q[2] = (Q[1] + cls((F(Q[1], QM0, QM1) + QM2 + x[1] + 0xe8c7b756) & 0xFFFFFFFF,
-                                       12)) & 0xFFFFFFFF
-                    x[5] = (crs((Q[6] - Q[5]) % (1 << 32), 12) - F(Q[5], Q[4], Q[3]) - Q[2] - 0x4787c62a) % (
-                            1 << 32)
-                    Q[21] = (Q[20] + cls((G(Q[20], Q[19], Q[18]) + Q[17] + x[5] + 0xd62f105d) & 0xFFFFFFFF,
-                                         5)) & 0xFFFFFFFF
+                    x[1] = (crs((Q[17] - Q[16]) % (1 << 32), 5) - G(Q[16], Q[15], Q[14]) - Q[13] - 0xf61e2562) % (1 << 32)
+                    Q[2] = md5_step(F, QM2, Q[1], QM0, QM1, x[1], 0xe8c7b756, 12)
+                    x[5] = md5_reverse_step(6, 12, 0x4787c62a)
+                    Q[21] = md5_step(G, Q[17], Q[20], Q[19], Q[18], x[5], 0xd62f105d, 5)
                     if ((Q[21] ^ Q[20]) & 0x80020000) != 0:
                         continue  # two conditions
-                    Q[22] = (Q[21] + cls((G(Q[21], Q[20], Q[19]) + Q[18] + x[10] + 0x2441453) & 0xFFFFFFFF,
-                                         9)) & 0xFFFFFFFF
+                    Q[22] = md5_step(G, Q[18], Q[21], Q[20], Q[19], x[10], 0x2441453, 9)
                     if (Q[22] & longmask[32]) != bit_Q15_32:
                         continue  # one condition
-                    x[15] = (crs((Q[16] - Q[15]) % (1 << 32), 22) - F(Q[15], Q[14], Q[13]) - Q[
-                        12] - 0x49b40821) % (1 << 32)
+                    x[15] = md5_reverse_step(16, 22, 0x49b40821)
                     zavorka_Q23 = (G(Q[22], Q[21], Q[20]) + Q[19] + x[15] + 0xd8a1e681) & 0xFFFFFFFF
                     if (zavorka_Q23 & longmask[18]) != 0:
                         continue
                     Q[23] = (Q[22] + cls(zavorka_Q23, 14)) & 0xFFFFFFFF
                     if (Q[23] & longmask[32]) != 0:
                         continue
-                    x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[1] - 0xf57c0faf) % (
-                            1 << 32)
-                    Q[24] = (Q[23] + cls((G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF,
-                                         20)) & 0xFFFFFFFF
+                    x[4] = md5_reverse_step(5, 7, 0xf57c0faf)
+                    Q[24] = md5_step(G, Q[20], Q[23], Q[22], Q[21], x[4], 0xe7d3fbc8, 20)
                     if (Q[24] & longmask[32]) != longmask[32]:
                         continue
                     hQ3p = Q[3] & 0x77ffffda
@@ -443,8 +430,7 @@ def B1(seed=None):
                                 - hQ3p) % (1 << 32)
                                + hQ14p + 0xc040b340 + G(Q[17], Q[16], Q[15])) & 0xFFFFFFFF
 
-                    B1a = (crs((Q[13] - Q[12]) % (1 << 32), 7) - F(Q[12], Q[11], Q[10]) - 0x6b901122) % (
-                            1 << 32)
+                    B1a = (crs((Q[13] - Q[12]) % (1 << 32), 7) - F(Q[12], Q[11], Q[10]) - 0x6b901122) % (1 << 32)
                     B1b = (Q[21] + 0x21e1cde6) & 0xFFFFFFFF
                     B1c = (x[5] + 0xfffa3942) & 0xFFFFFFFF
                     B1d = (x[1] + 0xa4beea44) & 0xFFFFFFFF
@@ -457,34 +443,26 @@ def B1(seed=None):
                             continue
                         Q[4] = ((constxxx & 0x7400000a) + hQ4p) & 0xFFFFFFFF
                         Q[3] = ((constxxx & 0x88000025) + hQ3p) & 0xFFFFFFFF
-                        x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - F(Q[2], Q[1], QM0) - QM1 - 0x242070db) % (
-                                1 << 32)
+                        x[2] = (crs((Q[3] - Q[2]) % (1 << 32), 17) - F(Q[2], Q[1], QM0) - QM1 - 0x242070db) % (1 << 32)
 
                         B2a = (x[2] + 0xfcefa3f8) & 0xFFFFFFFF
 
                         for Q4 in range(1):  # tunnel Q4,26 not included
 
                             Q[4] = Q[4] ^ 0x02000000
-                            x[4] = (crs((Q[5] - Q[4]) % (1 << 32), 7) - F(Q[4], Q[3], Q[2]) - Q[
-                                1] - 0xf57c0faf) % (1 << 32)
-                            Q[24] = (Q[23] + cls(
-                                (G(Q[23], Q[22], Q[21]) + Q[20] + x[4] + 0xe7d3fbc8) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
+                            x[4] = md5_reverse_step(5, 7, 0xf57c0faf)
+                            Q[24] = md5_step(G, Q[20], Q[23], Q[22], Q[21], x[4], 0xe7d3fbc8, 20)
                             if (Q[24] & longmask[32]) != longmask[32]:
                                 continue
 
                             Q[14] = (maskQ14[Q14] + hQ14p) & 0xFFFFFFFF
 
-                            x[6] = (crs((Q[7] - Q[6]) % (1 << 32), 17) - F(Q[6], Q[5], Q[4]) - Q[
-                                3] - 0xa8304613) % (1 << 32)
+                            x[6] = md5_reverse_step(7, 17, 0xa8304613)
                             # x[2] = (crs(Q[ 3]-Q[ 2],17) - F(Q[ 2],Q[ 1],  QM0) -   QM1 - 0x242070db) % (1 << 32)
-                            x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - F(Q[3], Q[2],
-                                                                           Q[1]) - QM0 - 0xc1bdceee) % (1 << 32)
-                            x[7] = (crs((Q[8] - Q[7]) % (1 << 32), 22) - F(Q[7], Q[6], Q[5]) - Q[
-                                4] - 0xfd469501) % (1 << 32)
-                            x[13] = (crs((Q[14] - Q[13]) % (1 << 32), 12) - F(Q[13], Q[12], Q[11]) - Q[
-                                10] - 0xfd987193) % (1 << 32)
-                            x[14] = (crs((Q[15] - Q[14]) % (1 << 32), 17) - F(Q[14], Q[13], Q[12]) - Q[
-                                11] - 0xa679438e) % (1 << 32)
+                            x[3] = (crs((Q[4] - Q[3]) % (1 << 32), 22) - F(Q[3], Q[2], Q[1]) - QM0 - 0xc1bdceee) % (1 << 32)
+                            x[7] = md5_reverse_step(8, 22, 0xfd469501)
+                            x[13] = md5_reverse_step(14, 12, 0xfd987193)
+                            x[14] = md5_reverse_step(15, 17, 0xa679438e)
 
                             B3a = (Q[22] + x[14] + 0xc33707d6) & 0xFFFFFFFF
                             B3b = (Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF
@@ -508,50 +486,37 @@ def B1(seed=None):
                                 x[8] = (crs((Q[9] - Q[8]) % (1 << 32), 7) - B0a) % (1 << 32)
                                 # x[ 9] = (crs((Q[10]-Q[9]) % (1 << 32) 9],12) - F(Q[ 9],Q[ 8],Q[ 7]) - Q[ 6] - 0x8b44f7af) % (1 << 32)
                                 # B0b = (Q[ 6] + 0x8b44f7af) & 0xFFFFFFFF
-                                x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - F(Q[9], Q[8], Q[7]) - B0b) % (
-                                        1 << 32)
+                                x[9] = (crs((Q[10] - Q[9]) % (1 << 32), 12) - F(Q[9], Q[8], Q[7]) - B0b) % (1 << 32)
                                 # x[12] = (crs((Q[13]-Q[12]) % (1 << 32), 7) - F(Q[12],Q[11],Q[10]) - Q[ 9] - 0x6b901122) % (1 << 32)
                                 # B1a=crs((Q[13]-Q[12]) % (1 << 32), 7) - F(Q[12],Q[11],Q[10]) - 0x6b901122
                                 x[12] = (B1a - Q[9]) % (1 << 32)
                                 # Q[25] = (Q[24] + cls(G(Q[24],Q[23],Q[22]) + Q[21] + x[9] + 0x21e1cde6, 5)) & 0xFFFFFFFF
                                 # B1b = (Q[21] + 0x21e1cde6) & 0xFFFFFFFF
-                                Q[25] = (Q[24] + cls((G(Q[24], Q[23], Q[22]) + B1b + x[9]) & 0xFFFFFFFF,
-                                                     5)) & 0xFFFFFFFF
+                                Q[25] = (Q[24] + cls((G(Q[24], Q[23], Q[22]) + B1b + x[9]) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
                                 # Q[26] = (Q[25] + cls(G(Q[25],Q[24],Q[23]) + Q[22] + x[14] + 0xc33707d6, 9)) & 0xFFFFFFFF
                                 # B3a=Q[22] + x[14] + 0xc33707d6
-                                Q[26] = (Q[25] + cls((G(Q[25], Q[24], Q[23]) + B3a) & 0xFFFFFFFF,
-                                                     9)) & 0xFFFFFFFF
+                                Q[26] = (Q[25] + cls((G(Q[25], Q[24], Q[23]) + B3a) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
                                 # Q[27] = (Q[26] + cls(G(Q[26],Q[25],Q[24]) + Q[23] + x[3] + 0xf4d50d87, 14)) & 0xFFFFFFFF
                                 # B3b = (Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF
-                                Q[27] = (Q[26] + cls((G(Q[26], Q[25], Q[24]) + B3b) & 0xFFFFFFFF,
-                                                     14)) & 0xFFFFFFFF
+                                Q[27] = (Q[26] + cls((G(Q[26], Q[25], Q[24]) + B3b) & 0xFFFFFFFF, 14)) & 0xFFFFFFFF
                                 # Q[28] = (Q[27] + cls(G(Q[27],Q[26],Q[25]) + Q[24] + x[8] + 0x455a14ed, 20)) & 0xFFFFFFFF
                                 # B3c = (Q[24] + 0x455a14ed) & 0xFFFFFFFF
-                                Q[28] = (Q[27] + cls((G(Q[27], Q[26], Q[25]) + x[8] + B3c) & 0xFFFFFFFF,
-                                                     20)) & 0xFFFFFFFF
+                                Q[28] = (Q[27] + cls((G(Q[27], Q[26], Q[25]) + x[8] + B3c) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
                                 # Q[29] = (Q[28] + cls(G(Q[28],Q[27],Q[26]) + Q[25] + x[13] + 0xa9e3e905, 5)) & 0xFFFFFFFF
                                 # B3d = (x[13] + 0xa9e3e905) & 0xFFFFFFFF
-                                Q[29] = (Q[28] + cls((G(Q[28], Q[27], Q[26]) + Q[25] + B3d) & 0xFFFFFFFF,
-                                                     5)) & 0xFFFFFFFF
+                                Q[29] = (Q[28] + cls((G(Q[28], Q[27], Q[26]) + Q[25] + B3d) & 0xFFFFFFFF, 5)) & 0xFFFFFFFF
                                 # Q[30] = (Q[29] + cls( G(Q[29],Q[28],Q[27]) + Q[26] + x[2] + 0xfcefa3f8, 9)) & 0xFFFFFFFF
                                 # B2a = (x[2] + 0xfcefa3f8) & 0xFFFFFFFF
-                                Q[30] = (Q[29] + cls((G(Q[29], Q[28], Q[27]) + Q[26] + B2a) & 0xFFFFFFFF,
-                                                     9)) & 0xFFFFFFFF
+                                Q[30] = (Q[29] + cls((G(Q[29], Q[28], Q[27]) + Q[26] + B2a) & 0xFFFFFFFF, 9)) & 0xFFFFFFFF
                                 # Q[31] = (Q[30] + cls( G(Q[30],Q[29],Q[28]) + Q[27] + x[7] + 0x676f02d9, 14)) & 0xFFFFFFFF
                                 # B3e = (x[7] + 0x676f02d9) & 0xFFFFFFFF
-                                Q[31] = (Q[30] + cls((G(Q[30], Q[29], Q[28]) + Q[27] + B3e) & 0xFFFFFFFF,
-                                                     14)) & 0xFFFFFFFF
-                                Q[32] = (Q[31] + cls(
-                                    (G(Q[31], Q[30], Q[29]) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
-                                    20)) & 0xFFFFFFFF
+                                Q[31] = (Q[30] + cls((G(Q[30], Q[29], Q[28]) + Q[27] + B3e) & 0xFFFFFFFF, 14)) & 0xFFFFFFFF
+                                Q[32] = (Q[31] + cls((G(Q[31], Q[30], Q[29]) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF, 20)) & 0xFFFFFFFF
                                 # Q[33] = (Q[32] + cls( H(Q[32],Q[31],Q[30]) + Q[29] + x[5] +0xfffa3942, 4)) & 0xFFFFFFFF
                                 # B1c = (x[5] +0xfffa3942) & 0xFFFFFFFF
-                                Q[33] = (Q[32] + cls((H(Q[32], Q[31], Q[30]) + Q[29] + B1c) & 0xFFFFFFFF,
-                                                     4)) & 0xFFFFFFFF
+                                Q[33] = (Q[32] + cls((H(Q[32], Q[31], Q[30]) + Q[29] + B1c) & 0xFFFFFFFF, 4)) & 0xFFFFFFFF
 
-                                Q[34] = (Q[33] + cls(
-                                    (H(Q[33], Q[32], Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
-                                    11)) & 0xFFFFFFFF
+                                Q[34] = md5_step(H, Q[30], Q[33], Q[32], Q[31], x[8], 0x8771f681, 11)
 
                                 # bit 16 nulovy
                                 zavorka_Q35 = (H(Q[34], Q[33], Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
@@ -562,56 +527,41 @@ def B1(seed=None):
                                 Q[35] = ((Q[34] + cls(zavorka_Q35, 16)) & 0xFFFFFFFF) & 0xFFFFFFFF
                                 # Q[36] = (Q[35] + cls( H(Q[35],Q[34],Q[33]) + Q[32] + x[14] + 0xfde5380c, 23)) & 0xFFFFFFFF
                                 # B3f = (x[14] + 0xfde5380c) & 0xFFFFFFFF
-                                Q[36] = (Q[35] + cls((H(Q[35], Q[34], Q[33]) + Q[32] + B3f) & 0xFFFFFFFF,
-                                                     23)) & 0xFFFFFFFF
+                                Q[36] = (Q[35] + cls((H(Q[35], Q[34], Q[33]) + Q[32] + B3f) & 0xFFFFFFFF, 23)) & 0xFFFFFFFF
                                 # Q[37] = (Q[36] + cls( H(Q[36],Q[35],Q[34]) + Q[33] + x[1] + 0xa4beea44, 4)) & 0xFFFFFFFF
                                 # B1d = ( x[1] + 0xa4beea44) & 0xFFFFFFFF
-                                Q[37] = (Q[36] + cls((H(Q[36], Q[35], Q[34]) + Q[33] + B1d) & 0xFFFFFFFF,
-                                                     4)) & 0xFFFFFFFF
+                                Q[37] = (Q[36] + cls((H(Q[36], Q[35], Q[34]) + Q[33] + B1d) & 0xFFFFFFFF, 4)) & 0xFFFFFFFF
                                 # Q[38] = (Q[37] + cls( H(Q[37],Q[36],Q[35]) + Q[34] + x[4] + 0x4bdecfa9, 11)) & 0xFFFFFFFF
                                 # B3g = (x[4] + 0x4bdecfa9) & 0xFFFFFFFF
-                                Q[38] = (Q[37] + cls((H(Q[37], Q[36], Q[35]) + Q[34] + B3g) & 0xFFFFFFFF,
-                                                     11)) & 0xFFFFFFFF
+                                Q[38] = (Q[37] + cls((H(Q[37], Q[36], Q[35]) + Q[34] + B3g) & 0xFFFFFFFF, 11)) & 0xFFFFFFFF
                                 # Q[39] = (Q[38] + cls( H(Q[38],Q[37],Q[36]) + Q[35] + x[7] + 0xf6bb4b60, 16)) & 0xFFFFFFFF
                                 # B3h = (x[7] + 0xf6bb4b60) & 0xFFFFFFFF
-                                Q[39] = (Q[38] + cls((H(Q[38], Q[37], Q[36]) + Q[35] + B3h) & 0xFFFFFFFF,
-                                                     16)) & 0xFFFFFFFF
+                                Q[39] = (Q[38] + cls((H(Q[38], Q[37], Q[36]) + Q[35] + B3h) & 0xFFFFFFFF, 16)) & 0xFFFFFFFF
 
                                 # Q[40] = (Q[39] + cls( H(Q[39],Q[38],Q[37]) + Q[36] + x[10] +0xbebfbc70 , 23)) & 0xFFFFFFFF
                                 # B01a = (	x[10] +0xbebfbc70) & 0xFFFFFFFF
-                                Q[40] = (Q[39] + cls((H(Q[39], Q[38], Q[37]) + Q[36] + B01a) & 0xFFFFFFFF,
-                                                     23)) & 0xFFFFFFFF
+                                Q[40] = (Q[39] + cls((H(Q[39], Q[38], Q[37]) + Q[36] + B01a) & 0xFFFFFFFF, 23)) & 0xFFFFFFFF
                                 # Q[41] = (Q[40] + cls( H(Q[40],Q[39],Q[38]) + Q[37] + x[13] + 0x289b7ec6, 4)) & 0xFFFFFFFF
                                 # B3i = (x[13] + 0x289b7ec6) & 0xFFFFFFFF
-                                Q[41] = (Q[40] + cls((H(Q[40], Q[39], Q[38]) + Q[37] + B3i) & 0xFFFFFFFF,
-                                                     4)) & 0xFFFFFFFF
+                                Q[41] = (Q[40] + cls((H(Q[40], Q[39], Q[38]) + Q[37] + B3i) & 0xFFFFFFFF, 4)) & 0xFFFFFFFF
                                 # Q[42] = (Q[41] + cls( H(Q[41],Q[40],Q[39]) + Q[38] + x[0] + 0xeaa127fa, 11)) & 0xFFFFFFFF
                                 # B02a = (x[0] + 0xeaa127fa) & 0xFFFFFFFF
-                                Q[42] = (Q[41] + cls((H(Q[41], Q[40], Q[39]) + Q[38] + B02a) & 0xFFFFFFFF,
-                                                     11)) & 0xFFFFFFFF
+                                Q[42] = (Q[41] + cls((H(Q[41], Q[40], Q[39]) + Q[38] + B02a) & 0xFFFFFFFF, 11)) & 0xFFFFFFFF
                                 # Q[43] = (Q[42] + cls( H(Q[42],Q[41],Q[40]) + Q[39] + x[3] + 0xd4ef3085, 16)) & 0xFFFFFFFF
                                 # B3j = (x[3] + 0xd4ef3085) & 0xFFFFFFFF
-                                Q[43] = (Q[42] + cls((H(Q[42], Q[41], Q[40]) + Q[39] + B3j) & 0xFFFFFFFF,
-                                                     16)) & 0xFFFFFFFF
+                                Q[43] = (Q[42] + cls((H(Q[42], Q[41], Q[40]) + Q[39] + B3j) & 0xFFFFFFFF, 16)) & 0xFFFFFFFF
                                 # Q[44] = (Q[43] + cls( H(Q[43],Q[42],Q[41]) + Q[40] + x[6] + 0x4881d05, 23)) & 0xFFFFFFFF
                                 # B3k = (x[6] + 0x4881d05) & 0xFFFFFFFF
-                                Q[44] = (Q[43] + cls((H(Q[43], Q[42], Q[41]) + Q[40] + B3k) & 0xFFFFFFFF,
-                                                     23)) & 0xFFFFFFFF
-                                Q[45] = (Q[44] + cls(
-                                    (H(Q[44], Q[43], Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
-                                    4)) & 0xFFFFFFFF
-                                Q[46] = (Q[45] + cls(
-                                    (H(Q[45], Q[44], Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
-                                    11)) & 0xFFFFFFFF
+                                Q[44] = (Q[43] + cls((H(Q[43], Q[42], Q[41]) + Q[40] + B3k) & 0xFFFFFFFF, 23)) & 0xFFFFFFFF
+                                Q[45] = md5_step(H, Q[41], Q[44], Q[43], Q[42], x[9], 0xd9d4d039, 4)
+                                Q[46] = (Q[45] + cls((H(Q[45], Q[44], Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF, 11)) & 0xFFFFFFFF
 
                                 # Q[47] = (Q[46] + cls( H(Q[46],Q[45],Q[44]) + Q[43] + x[15] + 0x1fa27cf8, 16)) & 0xFFFFFFFF
                                 # B1e = (x[15] + 0x1fa27cf8) & 0xFFFFFFFF
-                                Q[47] = (Q[46] + cls((H(Q[46], Q[45], Q[44]) + Q[43] + B1e) & 0xFFFFFFFF,
-                                                     16)) & 0xFFFFFFFF
+                                Q[47] = (Q[46] + cls((H(Q[46], Q[45], Q[44]) + Q[43] + B1e) & 0xFFFFFFFF, 16)) & 0xFFFFFFFF
                                 # Q[48] = (Q[47] + cls( H(Q[47],Q[46],Q[45]) + Q[44] + x[2] + 0xc4ac5665, 23)) & 0xFFFFFFFF
                                 # B3l = (x[2] + 0xc4ac5665) & 0xFFFFFFFF
-                                Q[48] = (Q[47] + cls((H(Q[47], Q[46], Q[45]) + Q[44] + B3l) & 0xFFFFFFFF,
-                                                     23)) & 0xFFFFFFFF
+                                Q[48] = (Q[47] + cls((H(Q[47], Q[46], Q[45]) + Q[44] + B3l) & 0xFFFFFFFF, 23)) & 0xFFFFFFFF
 
                                 bitI = Q[46] & longmask[32]
 
@@ -620,8 +570,7 @@ def B1(seed=None):
 
                                 # Q[49] = (Q[48] + cls( I(Q[48],Q[47],Q[46]) + Q[45] + x[0] + 0xf4292244, 6)) & 0xFFFFFFFF
                                 # B02b = (x[0] + 0xf4292244) & 0xFFFFFFFF
-                                Q[49] = (Q[48] + cls((I(Q[48], Q[47], Q[46]) + Q[45] + B02b) & 0xFFFFFFFF,
-                                                     6)) & 0xFFFFFFFF
+                                Q[49] = (Q[48] + cls((I(Q[48], Q[47], Q[46]) + Q[45] + B02b) & 0xFFFFFFFF, 6)) & 0xFFFFFFFF
 
                                 bitJ = Q[47] & longmask[32]
 
@@ -630,8 +579,7 @@ def B1(seed=None):
 
                                 # Q[50] = (Q[49] + cls( I(Q[49],Q[48],Q[47]) + Q[46]  + x[7] + 0x432aff97, 10)) & 0xFFFFFFFF
                                 # B3m = (x[7] + 0x432aff97) & 0xFFFFFFFF
-                                Q[50] = (Q[49] + cls((I(Q[49], Q[48], Q[47]) + Q[46] + B3m) & 0xFFFFFFFF,
-                                                     10)) & 0xFFFFFFFF
+                                Q[50] = (Q[49] + cls((I(Q[49], Q[48], Q[47]) + Q[46] + B3m) & 0xFFFFFFFF, 10)) & 0xFFFFFFFF
 
                                 bit_I_neg = bitI ^ longmask[32]
 
@@ -640,74 +588,51 @@ def B1(seed=None):
 
                                 # Q[51] = (Q[50] + cls( I(Q[50],Q[49],Q[48]) + Q[47] + x[14] + 0xab9423a7, 15)) & 0xFFFFFFFF
                                 # B3n = (x[14] + 0xab9423a7) & 0xFFFFFFFF
-                                Q[51] = (Q[50] + cls((I(Q[50], Q[49], Q[48]) + Q[47] + B3n) & 0xFFFFFFFF,
-                                                     15)) & 0xFFFFFFFF
+                                Q[51] = (Q[50] + cls((I(Q[50], Q[49], Q[48]) + Q[47] + B3n) & 0xFFFFFFFF, 15)) & 0xFFFFFFFF
                                 if (Q[51] & longmask[32]) != bitJ:
                                     continue
                                 # Q[52] = (Q[51] + cls( I(Q[51],Q[50],Q[49]) + Q[48] + x[5] + 0xfc93a039, 21)) & 0xFFFFFFFF
                                 # B1f = (x[5] + 0xfc93a039) & 0xFFFFFFFF
-                                Q[52] = (Q[51] + cls((I(Q[51], Q[50], Q[49]) + Q[48] + B1f) & 0xFFFFFFFF,
-                                                     21)) & 0xFFFFFFFF
+                                Q[52] = (Q[51] + cls((I(Q[51], Q[50], Q[49]) + Q[48] + B1f) & 0xFFFFFFFF, 21)) & 0xFFFFFFFF
 
                                 if (Q[52] & longmask[32]) != bit_I_neg:
                                     continue
                                 Q[53] = (Q[52] + cls(
-                                    (I(Q[52], Q[51], Q[50]) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                    (I(Q[52], Q[51], Q[50]) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF, 6)) & 0xFFFFFFFF
                                 if (Q[53] & longmask[32]) != bitJ:
                                     continue
-                                Q[54] = (Q[53] + cls(
-                                    (I(Q[53], Q[52], Q[51]) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
-                                    10)) & 0xFFFFFFFF
+                                Q[54] = md5_step(I, Q[50], Q[53], Q[52], Q[51], x[3], 0x8f0ccc92, 10)
                                 if (Q[54] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[55] = (Q[54] + cls(
-                                    (I(Q[54], Q[53], Q[52]) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
+                                Q[55] = md5_step(I, Q[51], Q[54], Q[53], Q[52], x[10], 0xffeff47d, 15)
                                 if (Q[55] & longmask[32]) != bitJ:
                                     continue
-                                Q[56] = (Q[55] + cls(
-                                    (I(Q[55], Q[54], Q[53]) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[56] = md5_step(I, Q[52], Q[55], Q[54], Q[53], x[1], 0x85845dd1, 21)
                                 if (Q[56] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[57] = (Q[56] + cls(
-                                    (I(Q[56], Q[55], Q[54]) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                Q[57] = md5_step(I, Q[53], Q[56], Q[55], Q[54], x[8], 0x6fa87e4f, 6)
                                 if (Q[57] & longmask[32]) != bitJ:
                                     continue
-                                Q[58] = (Q[57] + cls(
-                                    (I(Q[57], Q[56], Q[55]) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
-                                    10)) & 0xFFFFFFFF
+                                Q[58] = md5_step(I, Q[54], Q[57], Q[56], Q[55], x[15], 0xfe2ce6e0, 10)
                                 if (Q[58] & longmask[32]) != bit_I_neg:
                                     continue
-                                Q[59] = (Q[58] + cls(
-                                    (I(Q[58], Q[57], Q[56]) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
+                                Q[59] = md5_step(I, Q[55], Q[58], Q[57], Q[56], x[6], 0xa3014314, 15)
                                 if (Q[59] & longmask[32]) != bitJ:
                                     continue
-                                Q[60] = (Q[59] + cls(
-                                    (I(Q[59], Q[58], Q[57]) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[60] = md5_step(I, Q[56], Q[59], Q[58], Q[57], x[13], 0x4e0811a1, 21)
                                 if (Q[60] & longmask[32]) != bitI:
                                     continue
                                 if (Q[60] & longmask[26]) != 0:
                                     continue
-                                Q[61] = (Q[60] + cls(
-                                    (I(Q[60], Q[59], Q[58]) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
-                                    6)) & 0xFFFFFFFF
+                                Q[61] = md5_step(I, Q[57], Q[60], Q[59], Q[58], x[4], 0xf7537e82, 6)
                                 if (Q[61] & longmask[32]) != bitJ:
                                     continue
                                 if (Q[61] & longmask[26]) != longmask[26]:
                                     continue
                                 zavorka_Q62 = (I(Q[61], Q[60], Q[59]) + Q[58] + x[11] + 0xbd3af235) & 0xFFFFFFFF
                                 Q[62] = (Q[61] + cls(zavorka_Q62, 10)) & 0xFFFFFFFF
-                                Q[63] = (Q[62] + cls(
-                                    (I(Q[62], Q[61], Q[60]) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
-                                    15)) & 0xFFFFFFFF
-                                Q[64] = (Q[63] + cls(
-                                    (I(Q[63], Q[62], Q[61]) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
-                                    21)) & 0xFFFFFFFF
+                                Q[63] = md5_step(I, Q[59], Q[62], Q[61], Q[60], x[2], 0x2ad7d2bb, 15)
+                                Q[64] = md5_step(I, Q[60], Q[63], Q[62], Q[61], x[9], 0xeb86d391, 21)
 
                                 AA0 = IHV1[0] = (IHV0[0] + Q[61]) & 0xFFFFFFFF
                                 DD0 = IHV1[3] = (IHV0[3] + Q[62]) & 0xFFFFFFFF
@@ -798,9 +723,12 @@ def B1(seed=None):
                                 print(f"AVERAGE time for the 2nd block {time5 / collision_count}")
                                 print(f"AVERAGE time for the complete {time3 / collision_count}")
                                 print(f"No. of collisions = {collision_count}")
-                                result = [f"{os.getpid()}", f"AVERAGE time for the 1st block {time4 / collision_count}",
+                                result = [f"{os.getpid()}",
+                                          f"time for the 1st block {time1}",
+                                          f"time for the 2nd block {time2}",
+                                          f"AVERAGE time for the 1st block {time4 / collision_count}",
                                           f"AVERAGE time for the 2nd block {time5 / collision_count}",
-                                          f"AVERAGE time for the complete {time3 / collision_count}"]
+                                          f"AVERAGE time for the complete collision {time3 / collision_count}"]
                                 # fcb = fopen( out_filename,"a" )
                                 # fprintf(fcb,"\n The second block collision took  : %f sec", time2)
                                 # sprintf(buffer,"%02d.%02d.%04d %02d:%02d:%02d.%03d\n",
@@ -1054,122 +982,85 @@ def B2():
                     Q[9] = temp2Q9 ^ mask2Q9[cq9]
                     x[8] = md5_reverse_step(9, 7, 0x698098d8)
                     x[9] = md5_reverse_step(10, 12, 0x8b44f7af)
-                    x[12] = (crs((Q[13] - Q[12]) % (1 << 32), 7) - F(Q[12], Q[11], Q[10]) - Q[9] - 0x6b901122) % (
-                            1 << 32)
+                    x[12] = md5_reverse_step(13, 7, 0x6b901122)
 
-                    Q[25] = (Q[24] + cls((G(Q[24], Q[23], Q[22]) + Q[21] + x[9] + 0x21e1cde6) & 0xFFFFFFFF,
-                                         5)) & 0xFFFFFFFF
-                    Q[26] = (Q[25] + cls((G(Q[25], Q[24], Q[23]) + Q[22] + x[14] + 0xc33707d6) & 0xFFFFFFFF,
-                                         9)) & 0xFFFFFFFF
-                    Q[27] = (Q[26] + cls((G(Q[26], Q[25], Q[24]) + Q[23] + x[3] + 0xf4d50d87) & 0xFFFFFFFF,
-                                         14)) & 0xFFFFFFFF
-                    Q[28] = (Q[27] + cls((G(Q[27], Q[26], Q[25]) + Q[24] + x[8] + 0x455a14ed) & 0xFFFFFFFF,
-                                         20)) & 0xFFFFFFFF
-                    Q[29] = (Q[28] + cls((G(Q[28], Q[27], Q[26]) + Q[25] + x[13] + 0xa9e3e905) & 0xFFFFFFFF,
-                                         5)) & 0xFFFFFFFF
-                    Q[30] = (Q[29] + cls((G(Q[29], Q[28], Q[27]) + Q[26] + x[2] + 0xfcefa3f8) & 0xFFFFFFFF,
-                                         9)) & 0xFFFFFFFF
-                    Q[31] = (Q[30] + cls((G(Q[30], Q[29], Q[28]) + Q[27] + x[7] + 0x676f02d9) & 0xFFFFFFFF,
-                                         14)) & 0xFFFFFFFF
-                    Q[32] = (Q[31] + cls((G(Q[31], Q[30], Q[29]) + Q[28] + x[12] + 0x8d2a4c8a) & 0xFFFFFFFF,
-                                         20)) & 0xFFFFFFFF
-                    Q[33] = (Q[32] + cls((H(Q[32], Q[31], Q[30]) + Q[29] + x[5] + 0xfffa3942) & 0xFFFFFFFF,
-                                         4)) & 0xFFFFFFFF
-                    Q[34] = (Q[33] + cls((H(Q[33], Q[32], Q[31]) + Q[30] + x[8] + 0x8771f681) & 0xFFFFFFFF,
-                                         11)) & 0xFFFFFFFF
+                    Q[25] = md5_step(G, Q[21], Q[24], Q[23], Q[22], x[9], 0x21e1cde6, 5)
+                    Q[26] = md5_step(G, Q[22], Q[25], Q[24], Q[23], x[14], 0xc33707d6, 9)
+                    Q[27] = md5_step(G, Q[23], Q[26], Q[25], Q[24], x[3], 0xf4d50d87, 14)
+                    Q[28] = md5_step(G, Q[24], Q[27], Q[26], Q[25], x[8], 0x455a14ed, 20)
+                    Q[29] = md5_step(G, Q[25], Q[28], Q[27], Q[26], x[13], 0xa9e3e905, 5)
+                    Q[30] = md5_step(G, Q[26], Q[29], Q[28], Q[27], x[2], 0xfcefa3f8, 9)
+                    Q[31] = md5_step(G, Q[27], Q[30], Q[29], Q[28], x[7], 0x676f02d9, 14)
+                    Q[32] = md5_step(G, Q[28], Q[31], Q[30], Q[29], x[12], 0x8d2a4c8a, 20)
+                    Q[33] = md5_step(H, Q[29], Q[32], Q[31], Q[30], x[5], 0xfffa3942, 4)
+                    Q[34] = md5_step(H, Q[30], Q[33], Q[32], Q[31], x[8], 0x8771f681, 11)
 
                     zavorka_Q35 = (H(Q[34], Q[33], Q[32]) + Q[31] + x[11] + 0x6d9d6122) & 0xFFFFFFFF
                     if (zavorka_Q35 & longmask[16]) != longmask[16]:
                         continue
                     Q[35] = (Q[34] + cls(zavorka_Q35, 16)) & 0xFFFFFFFF
 
-                    Q[36] = (Q[35] + cls((H(Q[35], Q[34], Q[33]) + Q[32] + x[14] + 0xfde5380c) & 0xFFFFFFFF,
-                                         23)) & 0xFFFFFFFF
-                    Q[37] = (Q[36] + cls((H(Q[36], Q[35], Q[34]) + Q[33] + x[1] + 0xa4beea44) & 0xFFFFFFFF,
-                                         4)) & 0xFFFFFFFF
-                    Q[38] = (Q[37] + cls((H(Q[37], Q[36], Q[35]) + Q[34] + x[4] + 0x4bdecfa9) & 0xFFFFFFFF,
-                                         11)) & 0xFFFFFFFF
-                    Q[39] = (Q[38] + cls((H(Q[38], Q[37], Q[36]) + Q[35] + x[7] + 0xf6bb4b60) & 0xFFFFFFFF,
-                                         16)) & 0xFFFFFFFF
-                    Q[40] = (Q[39] + cls((H(Q[39], Q[38], Q[37]) + Q[36] + x[10] + 0xbebfbc70) & 0xFFFFFFFF,
-                                         23)) & 0xFFFFFFFF
-                    Q[41] = (Q[40] + cls((H(Q[40], Q[39], Q[38]) + Q[37] + x[13] + 0x289b7ec6) & 0xFFFFFFFF,
-                                         4)) & 0xFFFFFFFF
-                    Q[42] = (Q[41] + cls((H(Q[41], Q[40], Q[39]) + Q[38] + x[0] + 0xeaa127fa) & 0xFFFFFFFF,
-                                         11)) & 0xFFFFFFFF
-                    Q[43] = (Q[42] + cls((H(Q[42], Q[41], Q[40]) + Q[39] + x[3] + 0xd4ef3085) & 0xFFFFFFFF,
-                                         16)) & 0xFFFFFFFF
-                    Q[44] = (Q[43] + cls((H(Q[43], Q[42], Q[41]) + Q[40] + x[6] + 0x4881d05) & 0xFFFFFFFF,
-                                         23)) & 0xFFFFFFFF
-                    Q[45] = (Q[44] + cls((H(Q[44], Q[43], Q[42]) + Q[41] + x[9] + 0xd9d4d039) & 0xFFFFFFFF,
-                                         4)) & 0xFFFFFFFF
-                    Q[46] = (Q[45] + cls((H(Q[45], Q[44], Q[43]) + Q[42] + x[12] + 0xe6db99e5) & 0xFFFFFFFF,
-                                         11)) & 0xFFFFFFFF
-                    Q[47] = (Q[46] + cls((H(Q[46], Q[45], Q[44]) + Q[43] + x[15] + 0x1fa27cf8) & 0xFFFFFFFF,
-                                         16)) & 0xFFFFFFFF
-                    Q[48] = (Q[47] + cls((H(Q[47], Q[46], Q[45]) + Q[44] + x[2] + 0xc4ac5665) & 0xFFFFFFFF,
-                                         23)) & 0xFFFFFFFF
+                    Q[36] = md5_step(H, Q[32], Q[35], Q[34], Q[33], x[14], 0xfde5380c, 23)
+                    Q[37] = md5_step(H, Q[33], Q[36], Q[35], Q[34], x[1], 0xa4beea44, 4)
+                    Q[38] = md5_step(H, Q[34], Q[37], Q[36], Q[35], x[4], 0x4bdecfa9, 11)
+                    Q[39] = md5_step(H, Q[35], Q[38], Q[37], Q[36], x[7], 0xf6bb4b60, 16)
+                    Q[40] = md5_step(H, Q[36], Q[39], Q[38], Q[37], x[10], 0xbebfbc70, 23)
+                    Q[41] = md5_step(H, Q[37], Q[40], Q[39], Q[38], x[13], 0x289b7ec6, 4)
+                    Q[42] = md5_step(H, Q[38], Q[41], Q[40], Q[39], x[0], 0xeaa127fa, 11)
+                    Q[43] = md5_step(H, Q[39], Q[42], Q[41], Q[40], x[3], 0xd4ef3085, 16)
+                    Q[44] = md5_step(H, Q[40], Q[43], Q[42], Q[41], x[6], 0x4881d05, 23)
+                    Q[45] = md5_step(H, Q[41], Q[44], Q[43], Q[42], x[9], 0xd9d4d039, 4)
+                    Q[46] = md5_step(H, Q[42], Q[45], Q[44], Q[43], x[12], 0xe6db99e5, 11)
+                    Q[47] = md5_step(H, Q[43], Q[46], Q[45], Q[44], x[15], 0x1fa27cf8, 16)
+                    Q[48] = md5_step(H, Q[44], Q[47], Q[46], Q[45], x[2], 0xc4ac5665, 23)
 
                     bitJ = Q[46] & longmask[32]
                     if (Q[48] & longmask[32]) != bitJ:
                         continue
 
-                    Q[49] = (Q[48] + cls((I(Q[48], Q[47], Q[46]) + Q[45] + x[0] + 0xf4292244) & 0xFFFFFFFF,
-                                         6)) & 0xFFFFFFFF
+                    Q[49] = md5_step(I, Q[45], Q[48], Q[47], Q[46], x[0], 0xf4292244, 6)
                     bitK = Q[47] & longmask[32]
                     if (Q[49] & longmask[32]) != bitK:
                         continue
 
-                    Q[50] = (Q[49] + cls((I(Q[49], Q[48], Q[47]) + Q[46] + x[7] + 0x432aff97) & 0xFFFFFFFF,
-                                         10)) & 0xFFFFFFFF
+                    Q[50] = md5_step(I, Q[46], Q[49], Q[48], Q[47], x[7], 0x432aff97, 10)
                     bit_J_neg = bitJ ^ longmask[32]
                     if (Q[50] & longmask[32]) != bit_J_neg:
                         continue
 
-                    Q[51] = (Q[50] + cls((I(Q[50], Q[49], Q[48]) + Q[47] + x[14] + 0xab9423a7) & 0xFFFFFFFF,
-                                         15)) & 0xFFFFFFFF
+                    Q[51] = md5_step(I, Q[47], Q[50], Q[49], Q[48], x[14], 0xab9423a7, 15)
                     if (Q[51] & longmask[32]) != bitK:
                         continue
-                    Q[52] = (Q[51] + cls((I(Q[51], Q[50], Q[49]) + Q[48] + x[5] + 0xfc93a039) & 0xFFFFFFFF,
-                                         21)) & 0xFFFFFFFF
+                    Q[52] = md5_step(I, Q[48], Q[51], Q[50], Q[49], x[5], 0xfc93a039, 21)
                     if (Q[52] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[53] = (Q[52] + cls((I(Q[52], Q[51], Q[50]) + Q[49] + x[12] + 0x655b59c3) & 0xFFFFFFFF,
-                                         6)) & 0xFFFFFFFF
+                    Q[53] = md5_step(I, Q[49], Q[52], Q[51], Q[50], x[12], 0x655b59c3, 6)
                     if (Q[53] & longmask[32]) != bitK:
                         continue
-                    Q[54] = (Q[53] + cls((I(Q[53], Q[52], Q[51]) + Q[50] + x[3] + 0x8f0ccc92) & 0xFFFFFFFF,
-                                         10)) & 0xFFFFFFFF
+                    Q[54] = md5_step(I, Q[50], Q[53], Q[52], Q[51], x[3], 0x8f0ccc92, 10)
                     if (Q[54] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[55] = (Q[54] + cls((I(Q[54], Q[53], Q[52]) + Q[51] + x[10] + 0xffeff47d) & 0xFFFFFFFF,
-                                         15)) & 0xFFFFFFFF
+                    Q[55] = md5_step(I, Q[51], Q[54], Q[53], Q[52], x[10], 0xffeff47d, 15)
                     if (Q[55] & longmask[32]) != bitK:
                         continue
-                    Q[56] = (Q[55] + cls((I(Q[55], Q[54], Q[53]) + Q[52] + x[1] + 0x85845dd1) & 0xFFFFFFFF,
-                                         21)) & 0xFFFFFFFF
+                    Q[56] = md5_step(I, Q[52], Q[55], Q[54], Q[53], x[1], 0x85845dd1, 21)
                     if (Q[56] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[57] = (Q[56] + cls((I(Q[56], Q[55], Q[54]) + Q[53] + x[8] + 0x6fa87e4f) & 0xFFFFFFFF,
-                                         6)) & 0xFFFFFFFF
+                    Q[57] = md5_step(I, Q[53], Q[56], Q[55], Q[54], x[8], 0x6fa87e4f, 6)
                     if (Q[57] & longmask[32]) != bitK:
                         continue
-                    Q[58] = (Q[57] + cls((I(Q[57], Q[56], Q[55]) + Q[54] + x[15] + 0xfe2ce6e0) & 0xFFFFFFFF,
-                                         10)) & 0xFFFFFFFF
+                    Q[58] = md5_step(I, Q[54], Q[57], Q[56], Q[55], x[15], 0xfe2ce6e0, 10)
                     if (Q[58] & longmask[32]) != bit_J_neg:
                         continue
-                    Q[59] = (Q[58] + cls((I(Q[58], Q[57], Q[56]) + Q[55] + x[6] + 0xa3014314) & 0xFFFFFFFF,
-                                         15)) & 0xFFFFFFFF
+                    Q[59] = md5_step(I, Q[55], Q[58], Q[57], Q[56], x[6], 0xa3014314, 15)
                     if (Q[59] & longmask[32]) != bitK:
                         continue
-                    Q[60] = (Q[59] + cls((I(Q[59], Q[58], Q[57]) + Q[56] + x[13] + 0x4e0811a1) & 0xFFFFFFFF,
-                                         21)) & 0xFFFFFFFF
+                    Q[60] = md5_step(I, Q[56], Q[59], Q[58], Q[57], x[13], 0x4e0811a1, 21)
                     if (Q[60] & longmask[32]) != bitJ:
                         continue
                     if (Q[60] & longmask[26]) != 0:
                         continue
-                    Q[61] = (Q[60] + cls((I(Q[60], Q[59], Q[58]) + Q[57] + x[4] + 0xf7537e82) & 0xFFFFFFFF,
-                                         6)) & 0xFFFFFFFF
+                    Q[61] = md5_step(I, Q[57], Q[60], Q[59], Q[58], x[4], 0xf7537e82, 6)
                     if (Q[61] & longmask[32]) != bitK:
                         continue
                     if (Q[61] & longmask[26]) != longmask[26]:
@@ -1183,17 +1074,15 @@ def B2():
                         continue
                     if (Q[62] & longmask[26]) != longmask[26]:
                         continue
-                    Q[63] = (Q[62] + cls((I(Q[62], Q[61], Q[60]) + Q[59] + x[2] + 0x2ad7d2bb) & 0xFFFFFFFF,
-                                         15)) & 0xFFFFFFFF
+                    Q[63] = md5_step(I, Q[59], Q[62], Q[61], Q[60], x[2], 0x2ad7d2bb, 15)
                     if (Q[63] & longmask[32]) != bitK:
                         continue
                     if (Q[63] & longmask[26]) != longmask[26]:
                         continue
-                    Q[64] = (Q[63] + cls((I(Q[63], Q[62], Q[61]) + Q[60] + x[9] + 0xeb86d391) & 0xFFFFFFFF,
-                                         21)) & 0xFFFFFFFF
+                    Q[64] = md5_step(I, Q[60], Q[63], Q[62], Q[61], x[9], 0xeb86d391, 21)
                     if (Q[64] & longmask[26]) != longmask[26]:
                         continue  # not necessary (Sasaki), try to remove
-                    print("Last loop 3!!!")
+
                     IHV2 = [0] * 4
                     IHV2[0] = (P_IHV1[0] + Q[61]) & 0xFFFFFFFF
                     IHV2[1] = (P_IHV1[1] + Q[64]) & 0xFFFFFFFF
@@ -1283,6 +1172,10 @@ def main():
     newDir = os.getcwd() + "\\collisions"
     if not os.path.exists(newDir):
         os.makedirs(newDir)
+    filePath = os.getcwd() + "\\collisions\\collisions.txt"
+    with open(filePath, "a+") as file:
+        file.write(f"Starting time: {datetime.datetime.now()}\n")
+        file.close()
 
     cpuCount = int(cpu_count() * 0.75)
     seeds = [((i+1) * 3333) for i in range(cpuCount)] # [None] * cpuCount
@@ -1292,8 +1185,9 @@ def main():
 
 
 def findCollision(seed):
+    random.seed(seed)
     while True:
-        B1(seed)
+        B1()
 
 
 if __name__ == '__main__':
