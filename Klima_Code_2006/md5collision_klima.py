@@ -122,8 +122,7 @@ maskQ13 = [(0x2 * (k % 4) + 0x10 * (k // 4 % 2) + 0x40 * (k // 8 % 2) +
 
 
 def findBlock1():
-    print(f"{os.getpid()}: state is {random.getstate()}")
-    filePath = os.getcwd() + f"\\collisions\\states_{now}.txt"
+    filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
     with open(filePath, "a+") as file:
         file.write(f"{os.getpid()}: state is {random.getstate()}\n\n")
         file.close()
@@ -709,8 +708,6 @@ def findBlock1():
                                 md5.compress(HIHV0, M)  # mit a, b, c, d und M
                                 HIHV1 = HIHV0.copy()
                                 print(f"Block1: {os.getpid()}")
-                                print(f"{hex(Q[61])}")
-                                print(f"{hex(Q[64])}")
                                 print((HIHV1[0] - IHV1[0] - 0x80000000) % (1 << 32))
                                 print((HIHV1[1] - IHV1[1] - 0x82000000) % (1 << 32))
                                 print((HIHV1[2] - IHV1[2] - 0x82000000) % (1 << 32))
@@ -781,7 +778,7 @@ def findBlock1():
                                 # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 # fwrite(buffer,1,strlen(buffer),fcb)
                                 print(result)
-                                filePath = os.getcwd() + f"\\collisions\\collisions_{now}.txt"
+                                filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
                                 with open(filePath, "a+") as file:
                                     file.write(f"{result}\n")
                                     file.close()
@@ -1254,10 +1251,14 @@ def main():
     print("You can restart the program from the same point using HEXnumber as a parameter.")
 
     # sprintf(out_filename, "collision_md5_%08X.TXT", X)
-    newDir = os.getcwd() + "\\collisions"
-    if not os.path.exists(newDir):
-        os.makedirs(newDir)
-    filePath = os.getcwd() + f"\\collisions\\collisions_{now}.txt"
+    newDir = os.path.join(os.getcwd(), "collisions")
+
+    try:
+        if not os.path.exists(newDir):
+            os.makedirs(newDir)
+    except OSError:
+        sys.exit(f"Fatal: output directory {newDir} does not exist and cannot be created")
+    filePath = os.path.join(newDir, f"collisions_{now}.txt")
     with open(filePath, "a+") as file:
         file.write(f"Starting time: {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}\n")
         file.close()
