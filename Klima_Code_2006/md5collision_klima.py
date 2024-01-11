@@ -64,16 +64,18 @@ import random
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
 
-MD5_IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
+# MD5_IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
 
+Q2 = [0] * 65
+hashDigest = [0] * 4
 collision_count = 0  # ulong
 out_filename = [""] * 64  # char
-P_IHV1 = [0] * 4  # ulong
+P_IHV1, P_HIHV1 = [0] * 4, [0] * 4  # ulong
 buffer = [""] * 2048  # char
 time3 = time4 = time5 = 0  # double
 now = datetime.now().strftime("%d%m%Y-%H%M%S")
 
-x1, M1 = [""] * 16, [""] * 16  # unsigned char
+x1, M1, x2, M2 = [""] * 16, [""] * 16, [""] * 16, [""] * 16  # unsigned char
 
 longmask = [0] * 32  # unsigned long
 longmask = [0] + [(1 << k) for k in range(len(longmask))]
@@ -122,19 +124,19 @@ maskQ13 = [(0x2 * (k % 4) + 0x10 * (k // 4 % 2) + 0x40 * (k // 8 % 2) +
 
 
 def findBlock1():
-    filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
+    filePath = os.path.join(os.getcwd(), "collisions", f"state_{now}.txt")
     with open(filePath, "a+") as file:
-        file.write(f"{os.getpid()}: state is {random.getstate()}\n\n")
+        file.write(f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}: state is {random.getstate()}\n\n")
         file.close()
 
     Q = [0] * 65
     x = [0] * 16
     IHV1, IHV0, HIHV1, HIHV0 = [0] * 4, [0] * 4, [0] * 4, [0] * 4  # ulong
 
-    QM3 = IHV0[0] = MD5_IV[0]
-    QM0 = IHV0[1] = MD5_IV[1]
-    QM1 = IHV0[2] = MD5_IV[2]
-    QM2 = IHV0[3] = MD5_IV[3]
+    QM3 = IHV0[0] = random.randint(0, (2 ** 32) - 1) # MD5_IV[0]
+    QM0 = IHV0[1] = random.randint(0, (2 ** 32) - 1) # MD5_IV[1]
+    QM1 = IHV0[2] = random.randint(0, (2 ** 32) - 1) # MD5_IV[2]
+    QM2 = IHV0[3] = random.randint(0, (2 ** 32) - 1) # MD5_IV[3]
 
     startTime = time.perf_counter()
 
@@ -707,12 +709,12 @@ def findBlock1():
                                 HIHV0 = IHV0.copy()
                                 md5.compress(HIHV0, M)  # mit a, b, c, d und M
                                 HIHV1 = HIHV0.copy()
+
                                 print(f"Block1: {os.getpid()}")
                                 print((HIHV1[0] - IHV1[0] - 0x80000000) % (1 << 32))
                                 print((HIHV1[1] - IHV1[1] - 0x82000000) % (1 << 32))
                                 print((HIHV1[2] - IHV1[2] - 0x82000000) % (1 << 32))
                                 print((HIHV1[3] - IHV1[3] - 0x82000000) % (1 << 32))
-
                                 if (((HIHV1[0] - IHV1[0] - 0x80000000) % (1 << 32)) != 0 or
                                         ((HIHV1[1] - IHV1[1] - 0x82000000) % (1 << 32)) != 0 or
                                         ((HIHV1[2] - IHV1[2] - 0x82000000) % (1 << 32)) != 0 or
@@ -755,29 +757,33 @@ def findBlock1():
                                 # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 print(f"The second block collision took {time2} second")
 
-                                global collision_count, time3, time4, time5
+                                global collision_count, time3, time4, time5, x2, M2
                                 collision_count += 1
                                 time3 += time1 + time2
                                 time4 += time1
                                 time5 += time2
                                 # printf("\n The first and the second blocks together took : %f sec", time1 + time2)
-                                print(f"AVERAGE time for the 1st block {time4 / collision_count}")
-                                print(f"AVERAGE time for the 2nd block {time5 / collision_count}")
-                                print(f"AVERAGE time for the complete {time3 / collision_count}")
-                                print(f"No. of collisions = {collision_count}")
-                                result = [f"{os.getpid()}",
-                                          f"time for the 1st block {time1}",
-                                          f"time for the 2nd block {time2}",
-                                          f"AVERAGE time for the 1st block {time4 / collision_count}",
-                                          f"AVERAGE time for the 2nd block {time5 / collision_count}",
-                                          f"AVERAGE time for {collision_count} complete collision {time3 / collision_count}"]
+                                # print(f"AVERAGE time for the 1st block {time4 / collision_count}")
+                                # print(f"AVERAGE time for the 2nd block {time5 / collision_count}")
+                                # print(f"AVERAGE time for the complete {time3 / collision_count}")
+                                # print(f"No. of collisions = {collision_count}")
+                                result = [f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}",
+                                          f"IV: {list(map(hex, IHV0))}",
+                                          f"Hash digest: {list(map(hex, hashDigest))}",
+                                          f"m1: {list(map(hex, x1))}, {list(map(hex, x2))}",
+                                          f"m2: {list(map(hex, M1))}, {list(map(hex, M2))}",
+                                          f"1st block: {time1}",
+                                          f"2nd block: {time2}",
+                                          f"AVERAGE 1st block: {time4 / collision_count}",
+                                          f"AVERAGE 2nd block: {time5 / collision_count}",
+                                          f"AVERAGE time for {collision_count} collisions: {time3 / collision_count}"]
                                 # fcb = fopen( out_filename,"a" )
                                 # fprintf(fcb,"\n The second block collision took  : %f sec", time2)
                                 # sprintf(buffer,"%02d.%02d.%04d %02d:%02d:%02d.%03d\n",
                                 # now.wDay,now.wMonth,now.wYear,
                                 # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 # fwrite(buffer,1,strlen(buffer),fcb)
-                                print(result)
+                                # print(result)
                                 filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
                                 with open(filePath, "a+") as file:
                                     file.write(f"{result}\n")
@@ -1191,54 +1197,20 @@ def findBlock2():
                             ((HIHV2[3] - IHV2[3]) % (1 << 32) != 0)):
                         continue
 
-                    global x1, M1
-                    print(f"Block 1: {list(map(hex, x1))}, {list(map(hex, x))}")
-                    print(f"Block 2: {list(map(hex, M1))}, {list(map(hex, M))}")
+                    global x1, M1, x2, M2, Q2, hashDigest
+                    # print(f"Block 1: {list(map(hex, x1))}, {list(map(hex, x))}")
+                    # print(f"Block 2: {list(map(hex, M1))}, {list(map(hex, M))}")
                     md5.compress(P_IHV1, x)  # Compression of P_HIHV1 already done before ^
-                    # print(P_IHV1)
-                    print(f"Hash digest H: {P_IHV1}")
-                    print(f"Hash digest H': {temp}")
+                    # print(f"Hash digest H: {P_IHV1}")
+                    # print(f"Hash digest H': {temp}")
                     for i in range(len(P_IHV1)):
                         if P_IHV1[i] != temp[i]:
                             return -1
+                    Q2 = Q.copy()
+                    x2 = x.copy()
+                    M2 = M.copy()
+                    hashDigest = P_IHV1.copy()
                     print("SUPER DONEEEEEEEE!!!!!!!!!!")
-                    #     print("Check: The same MD5 hash\n" )
-                    #
-                    #     #if you want to writa data into file....
-                    #
-                    #     fprintf( fcb,"\nCollision data: \n")
-                    #     # prvni vektor
-                    #     for( i = (0 i < 128 i++ )
-                    #
-                    #     if( (i != 0) && ((i % 16) == 0) ) fprintf( fcb, "\n" )
-                    #     fprintf( fcb,"0x%02X", v1[i] )
-                    #     if( i != 127 ) fprintf( fcb, "," )
-                    #     else fprintf( fcb, ",\n" )
-                    #
-                    #     # prvni hash
-                    #     for( i = (0 i < 16 i++ )) & 0xFFFFFFFF
-                    #
-                    #     fprintf( fcb,"0x%02X", hash1[i] )
-                    #     if( i != 15 ) fprintf( fcb, "," )
-                    #     else fprintf( fcb, "\n,\n" )
-                    #
-                    #     # druhy vektor
-                    #     for( i = (0 i < 128 i++ )) & 0xFFFFFFFF
-                    #
-                    #     if( (i != 0) && ((i % 16) == 0) ) fprintf( fcb, "\n" )
-                    #     fprintf( fcb,"0x%02X", v2[i] )
-                    #     if( i != 127 ) fprintf( fcb, "," )
-                    #     else fprintf( fcb, ",\n" )
-                    #
-                    #     # druha hash
-                    #     for( i = (0 i < 16 i++ )) & 0xFFFFFFFF
-                    #
-                    #     fprintf( fcb,"0x%02X", hash2[i] )
-                    #     if( i != 15 ) fprintf( fcb, "," )
-                    #     else fprintf( fcb, "\n,\n" )
-                    #
-                    #
-                    #     fclose( fcb )
                     return 0
     return -1
 
@@ -1263,11 +1235,12 @@ def main():
         file.write(f"Starting time: {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}\n")
         file.close()
 
-    cpuCount = int(cpu_count() * 0.75)
+    cpuCount = int(cpu_count() * 0.9)
     seeds = [None] * cpuCount
     if len(sys.argv) > 1 and type(sys.argv[1]) is int:
         seedStep = sys.argv[1]
-        seeds = [((i + 1) * seedStep) for i in range(cpuCount)]  # [None] * cpuCount
+        seeds = [((i + 1) * seedStep) for i in range(cpuCount)]
+    print(f"Starting with RNG seeds {seeds}")
     with Pool(cpuCount) as p:
         p.map(findCollision, seeds)
         p.terminate()
