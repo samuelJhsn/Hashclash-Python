@@ -64,7 +64,7 @@ import random
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
 
-# MD5_IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
+MD5_IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
 
 Q2 = [0] * 65
 hashDigest = [0] * 4
@@ -133,10 +133,10 @@ def findBlock1():
     x = [0] * 16
     IHV1, IHV0, HIHV1, HIHV0 = [0] * 4, [0] * 4, [0] * 4, [0] * 4  # ulong
 
-    QM3 = IHV0[0] = random.randint(0, (2 ** 32) - 1) # MD5_IV[0]
-    QM0 = IHV0[1] = random.randint(0, (2 ** 32) - 1) # MD5_IV[1]
-    QM1 = IHV0[2] = random.randint(0, (2 ** 32) - 1) # MD5_IV[2]
-    QM2 = IHV0[3] = random.randint(0, (2 ** 32) - 1) # MD5_IV[3]
+    QM3 = IHV0[0] = random.randint(0, (2 ** 32) - 1)
+    QM0 = IHV0[1] = random.randint(0, (2 ** 32) - 1)
+    QM1 = IHV0[2] = random.randint(0, (2 ** 32) - 1)
+    QM2 = IHV0[3] = random.randint(0, (2 ** 32) - 1)
 
     startTime = time.perf_counter()
 
@@ -750,40 +750,25 @@ def findBlock1():
                                         break
 
                                 time2 = time.perf_counter() - time1 - startTime
-                                # GetLocalTime(&now)
-                                #
-                                # printf("\n%02d.%02d.%04d %02d:%02d:%02d.%03d",
-                                # now.wDay,now.wMonth,now.wYear,
-                                # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 print(f"The second block collision took {time2} second")
 
-                                global collision_count, time3, time4, time5, x2, M2
+                                global collision_count, time3, time4, time5, x2, M2, Q2
                                 collision_count += 1
                                 time3 += time1 + time2
                                 time4 += time1
                                 time5 += time2
-                                # printf("\n The first and the second blocks together took : %f sec", time1 + time2)
-                                # print(f"AVERAGE time for the 1st block {time4 / collision_count}")
-                                # print(f"AVERAGE time for the 2nd block {time5 / collision_count}")
-                                # print(f"AVERAGE time for the complete {time3 / collision_count}")
-                                # print(f"No. of collisions = {collision_count}")
                                 result = [f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}",
-                                          f"IV: {list(map(hex, IHV0))}",
-                                          f"Hash digest: {list(map(hex, hashDigest))}",
-                                          f"m1: {list(map(hex, x1))}, {list(map(hex, x2))}",
-                                          f"m2: {list(map(hex, M1))}, {list(map(hex, M2))}",
+                                          f"IV: {', '.join('0x{:08x}'.format(num) for num in IHV0)}",
+                                          f"Hash digest: {', '.join('0x{:08x}'.format(num) for num in hashDigest)}",
+                                          f"m1: {', '.join('0x{:08x}'.format(num) for num in x1)}, {', '.join('0x{:08x}'.format(num) for num in x2)}",
+                                          f"m2: {', '.join('0x{:08x}'.format(num) for num in M1)}, {', '.join('0x{:08x}'.format(num) for num in M2)}",
+                                          f"Q: {', '.join('0x{:08x}'.format(num) for num in Q)}",
+                                          f"Q2: {', '.join('0x{:08x}'.format(num) for num in Q2)}",
                                           f"1st block: {time1}",
                                           f"2nd block: {time2}",
                                           f"AVERAGE 1st block: {time4 / collision_count}",
                                           f"AVERAGE 2nd block: {time5 / collision_count}",
                                           f"AVERAGE time for {collision_count} collisions: {time3 / collision_count}"]
-                                # fcb = fopen( out_filename,"a" )
-                                # fprintf(fcb,"\n The second block collision took  : %f sec", time2)
-                                # sprintf(buffer,"%02d.%02d.%04d %02d:%02d:%02d.%03d\n",
-                                # now.wDay,now.wMonth,now.wYear,
-                                # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
-                                # fwrite(buffer,1,strlen(buffer),fcb)
-                                # print(result)
                                 filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
                                 with open(filePath, "a+") as file:
                                     file.write(f"{result}\n")
