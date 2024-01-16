@@ -1,13 +1,14 @@
 # MD5-Fast-Collision-Python
-A python version of the fast MD5 collision algorithm from the Hashclash Repo 
-(https://github.com/cr-marcstevens/hashclash/tree/master) by Marc Stevens as well as everything else for my 
-bachelor thesis.
+Python versions of the fast MD5 collision algorithm from the Hashclash Repo 
+(https://github.com/cr-marcstevens/hashclash/tree/master) by Marc Stevens as well as of the MD5 tunneling algorithm by Klima.
+Also everything else for my bachelor thesis.
 
-Many thanks to Marc Stevens for granting me GPLv3 license over the Hashclash Github repository 
-for this project (my bachelor thesis).
+Many thanks to Marc Stevens for granting me GPLv3 license over the Hashclash Github repository and Vlastimil Klima
+for granting me permissions to use his MD5 tunneling collision algorithm "in any way, with no limitations" for my project.
 
 DISCLAIMER: The original author of Hashclash, Marc Stevens, was not involved in any modifications and ports made by me
-in this repository. 
+in this repository. The original author of the MD5 tunneling collision algorithm, Vlastimil Klima, 
+was not involved in any modifications and ports made by me in this repository. 
 
 GPLv3 license:
 1. Anyone can copy, modify and distribute this software.
