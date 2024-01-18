@@ -32,7 +32,7 @@ def preprocessing(message):
     message_length = (len(hex(message)) - 2) * 4 & 0xFFFFFFFFFFFFFFFF
 
     message = (message << 8) | 0x80
-
+    print(message)
     zerosToAdd = 448 - message_length - 8
     if zerosToAdd < 0:
         zerosToAdd += 512
@@ -42,7 +42,7 @@ def preprocessing(message):
     message = hex(message)[2:]
 
     message = [struct.unpack("<I", struct.pack(">I", int(message[i:i + 8], 16)))[0] for i in range(0, len(message), 8)]
-    print(f"LAAA {message}")
+    print(message)
     return message
 
 

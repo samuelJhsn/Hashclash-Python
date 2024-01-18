@@ -133,10 +133,10 @@ def findBlock1():
     x = [0] * 16
     IHV1, IHV0, HIHV1, HIHV0 = [0] * 4, [0] * 4, [0] * 4, [0] * 4  # ulong
 
-    QM3 = IHV0[0] = random.randint(0, (2 ** 32) - 1)
-    QM0 = IHV0[1] = random.randint(0, (2 ** 32) - 1)
-    QM1 = IHV0[2] = random.randint(0, (2 ** 32) - 1)
-    QM2 = IHV0[3] = random.randint(0, (2 ** 32) - 1)
+    QM3 = IHV0[0] = MD5_IV[0]
+    QM0 = IHV0[1] = MD5_IV[1]
+    QM1 = IHV0[2] = MD5_IV[2]
+    QM2 = IHV0[3] = MD5_IV[3]
 
     startTime = time.perf_counter()
 

@@ -317,7 +317,7 @@ def find_block1_stevens_00(IV):
 
                 print(f"00: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
-                    return block
+                    return [block, IV1]
 
                 if IV2[0] != IV1[0]:
                     print("!")
