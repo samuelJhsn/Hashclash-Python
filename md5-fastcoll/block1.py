@@ -61,23 +61,18 @@ def find_block1(IV):
         IV2 = [IV[0] + (1 << 31) & 0xFFFFFFFF, IV[1] + (1 << 31) + (1 << 25) & 0xFFFFFFFF,
                IV[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF, IV[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF]
         if (IV[1] & (1 << 6)) != 0 and (IV[1] & 1) != 0:
-            print("S11")
             block = block1_stevens_11.find_block1_stevens_11(IV2)
         elif (IV[1] & (1 << 6)) != 0 and (IV[1] & 1) == 0:
-            print("S10")
             block = block1_stevens_10.find_block1_stevens_10(IV2)
         elif (IV[1] & (1 << 6)) == 0 and (IV[1] & 1) != 0:
-            print("S01")
             block = block1_stevens_01.find_block1_stevens_01(IV2)
         else:
-            print("S00")
             block = block1_stevens_00.find_block1_stevens_00(IV2)
 
         block[4] = (block[4] + (1 << 31)) & 0xFFFFFFFF
         block[11] = (block[11] + (1 << 15)) & 0xFFFFFFFF
         block[14] = (block[14] + (1 << 31)) & 0xFFFFFFFF
     else:
-        print("W")
         block = block1_wang.find_block1_wang(IV)
-
+    print("Found block1")
     return block

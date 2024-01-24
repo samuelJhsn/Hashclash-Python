@@ -315,10 +315,14 @@ def find_block1_stevens_01(IV):
 
                 IV1 = md5.compress(IV1, block)
                 IV2 = md5.compress(IV2, block2)
-
+                print(f"{IV1}")
+                print(f"{IV2}")
+                print(f"{block}, {Q[4:]}")
+                print("TEST!!!")
                 print(f"01: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
-                if (IV2[0] == IV1[0]) and (IV2[1] == IV1[1]) and (IV2[2] == IV1[2]) and (IV2[3] == IV1[3]):
-                    return [block, IV1]
+                if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
+                    print(f"\nFound block: {block}")
+                    return [block, IV1, Q[4:]]
 
                 if IV2[0] != IV1[0]:
                     print("!")

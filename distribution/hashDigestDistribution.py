@@ -30,8 +30,11 @@ def getHashes(compRoomStart, compRoomEnd, hashFunction):
     startHashing = time.perf_counter()
 
     hashes = [hashFunction(bitString).hexdigest() for bitString in bitStrings]
+    print(hashes)
     hashes = [list(f'{int(h, 16):0>{8 * hashFunction().digest_size}b}') for h in hashes]
+    print(hashes)
     hashes = [[int(numba) for numba in h] for h in hashes]
+    print(hashes)
     endHashing = time.perf_counter()
 
     return hashes

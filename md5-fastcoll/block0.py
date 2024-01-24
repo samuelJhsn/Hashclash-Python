@@ -348,13 +348,14 @@ def find_block0(IV):
 
                     IV1 = md5.compress(IV1, block)
                     IV2 = md5.compress(IV2, block2)
-
+                    print(f"{IV1}")
+                    print(f"{IV2}")
                     if (IV2[0] == ((IV1[0] + (1 << 31)) & 0xFFFFFFFF)) and \
                             (IV2[1] == ((IV1[1] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
                             (IV2[2] == ((IV1[2] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)) and \
                             (IV2[3] == ((IV1[3] + (1 << 31) + (1 << 25)) & 0xFFFFFFFF)):
                         print(f"\nFound block: {block}")
-                        return block
+                        return [block, Q[4:]]
 
                     if IV2[0] != ((IV1[0] + (1 << 31)) & 0xFFFFFFFF):
                         print("!", end="")
