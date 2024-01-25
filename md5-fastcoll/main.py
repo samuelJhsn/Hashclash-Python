@@ -30,8 +30,8 @@ def main():
 
     cpuCount = int(cpu_count() * 0.9)
     seeds = [None] * cpuCount
-    if len(sys.argv) > 1 and type(sys.argv[1]) is int:
-        seedStep = sys.argv[1]
+    if len(sys.argv) > 1 and type(int(sys.argv[1])) is int:
+        seedStep = int(sys.argv[1])
         seeds = [((i + 1) * seedStep) for i in range(cpuCount)]
     print(f"Starting with RNG seeds {seeds}")
     with Pool(cpuCount) as p:
@@ -87,17 +87,7 @@ def find_collision(seed):
         msg2_block1[14] = (msg2_block1[14] + (1 << 31)) & 0xFFFFFFFF
 
         print("Found collision, saving...")
-        # print(msg1_block0, msg1_block1)
-        # print(msg2_block0, msg2_block1)
 
-        # result = [f"Hash digest: {list(map(hex, hashDigest))}", (list(map(hex, msg1_block0)), list(map(hex, msg1_block1))), (list(map(hex, msg2_block0)), list(map(hex, msg2_block1)))]
-        # print(result)
-        # print(hashlib.md5())
-        # filePath = os.getcwd() + "\\collisions\\collisions.txt"
-        # with open(filePath, "a+") as file:
-        #     file.write("%s\n" % result)
-        #     file.close()
-        print("DONE!!!")
         result = [f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}",
                   f"IV: {', '.join('0x{:08x}'.format(num) for num in IV0)}",
                   f"Hash digest: {', '.join('0x{:08x}'.format(num) for num in hashDigest)}",
@@ -110,13 +100,12 @@ def find_collision(seed):
                   f"AVERAGE 1st block: {time4 / collision_count}",
                   f"AVERAGE 2nd block: {time5 / collision_count}",
                   f"AVERAGE time for {collision_count} collisions: {time3 / collision_count}"]
-        print(result)
-        print("DONE!!!")
+
         filePath = os.path.join(os.getcwd(), "collisions", f"collisions_{now}.txt")
         with open(filePath, "a+") as file:
             file.write(f"{result}\n")
             file.close()
-        print("!!!DONE!!!")
+
 
 
 if __name__ == '__main__':

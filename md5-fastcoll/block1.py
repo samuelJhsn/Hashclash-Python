@@ -69,10 +69,9 @@ def find_block1(IV):
         else:
             block = block1_stevens_00.find_block1_stevens_00(IV2)
 
-        block[4] = (block[4] + (1 << 31)) & 0xFFFFFFFF
-        block[11] = (block[11] + (1 << 15)) & 0xFFFFFFFF
-        block[14] = (block[14] + (1 << 31)) & 0xFFFFFFFF
+        block[0][4] = (block[0][4] + (1 << 31)) & 0xFFFFFFFF
+        block[0][11] = (block[0][11] + (1 << 15)) & 0xFFFFFFFF
+        block[0][14] = (block[0][14] + (1 << 31)) & 0xFFFFFFFF
     else:
         block = block1_wang.find_block1_wang(IV)
-    print("Found block1")
     return block

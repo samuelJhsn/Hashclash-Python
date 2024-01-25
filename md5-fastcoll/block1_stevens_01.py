@@ -213,91 +213,106 @@ def find_block1_stevens_01(IV):
                 Q[12] = q9 ^ q9mask[k9]
 
                 a = aa
-                b = bb
-                c = cc
-                d = dd
+                b = Q[27] = bb
+                c = Q[26] = cc
+                d = Q[25] = dd
 
                 block[8] = md5.md5_reverse_step(8, Q, 0x698098d8, 7)
                 block[9] = md5.md5_reverse_step(9, Q, 0x8b44f7af, 12)
                 block[12] = md5.md5_reverse_step(12, Q, 0x6b901122, 7)
 
-                a = md5.md5_step(md5.G, a, b, c, d, block[9], 0x21e1cde6, 5)
-                d = md5.md5_step(md5.G, d, a, b, c, block[14], 0xc33707d6, 9)
-                c = md5.md5_step(md5.G, c, d, a, b, block[3], 0xf4d50d87, 14)
-                b = md5.md5_step(md5.G, b, c, d, a, block[8], 0x455a14ed, 20)
-                a = md5.md5_step(md5.G, a, b, c, d, block[13], 0xa9e3e905, 5)
-                d = md5.md5_step(md5.G, d, a, b, c, block[2], 0xfcefa3f8, 9)
-                c = md5.md5_step(md5.G, c, d, a, b, block[7], 0x676f02d9, 14)
-                b = md5.md5_step(md5.G, b, c, d, a, block[12], 0x8d2a4c8a, 20)
-                a = md5.md5_step(md5.H, a, b, c, d, block[5], 0xfffa3942, 4)
-                d = md5.md5_step(md5.H, d, a, b, c, block[8], 0x8771f681, 11)
-
+                a = Q[28] = md5.md5_step(md5.G, a, b, c, d, block[9], 0x21e1cde6, 5)
+                d = Q[29] = md5.md5_step(md5.G, d, a, b, c, block[14], 0xc33707d6, 9)
+                c = Q[30] = md5.md5_step(md5.G, c, d, a, b, block[3], 0xf4d50d87, 14)
+                b = Q[31] = md5.md5_step(md5.G, b, c, d, a, block[8], 0x455a14ed, 20)
+                a = Q[32] = md5.md5_step(md5.G, a, b, c, d, block[13], 0xa9e3e905, 5)
+                d = Q[33] = md5.md5_step(md5.G, d, a, b, c, block[2], 0xfcefa3f8, 9)
+                c = Q[34] = md5.md5_step(md5.G, c, d, a, b, block[7], 0x676f02d9, 14)
+                b = Q[35] = md5.md5_step(md5.G, b, c, d, a, block[12], 0x8d2a4c8a, 20)
+                a = Q[36] = md5.md5_step(md5.H, a, b, c, d, block[5], 0xfffa3942, 4)
+                d = Q[37] = md5.md5_step(md5.H, d, a, b, c, block[8], 0x8771f681, 11)
                 c = (c + md5.H(d, a, b) + block[11] + 0x6d9d6122) & 0xFFFFFFFF
                 if 0 != (c & (1 << 15)):
                     continue
-                c = (((c << 16) & 0xFFFFFFFF | c >> 16) + d) & 0xFFFFFFFF
 
-                b = md5.md5_step(md5.H, b, c, d, a, block[14], 0xfde5380c, 23)
-                a = md5.md5_step(md5.H, a, b, c, d, block[1], 0xa4beea44, 4)
-                d = md5.md5_step(md5.H, d, a, b, c, block[4], 0x4bdecfa9, 11)
-                c = md5.md5_step(md5.H, c, d, a, b, block[7], 0xf6bb4b60, 16)
-                b = md5.md5_step(md5.H, b, c, d, a, block[10], 0xbebfbc70, 23)
-                a = md5.md5_step(md5.H, a, b, c, d, block[13], 0x289b7ec6, 4)
-                d = md5.md5_step(md5.H, d, a, b, c, block[0], 0xeaa127fa, 11)
-                c = md5.md5_step(md5.H, c, d, a, b, block[3], 0xd4ef3085, 16)
-                b = md5.md5_step(md5.H, b, c, d, a, block[6], 0x04881d05, 23)
-                a = md5.md5_step(md5.H, a, b, c, d, block[9], 0xd9d4d039, 4)
-                d = md5.md5_step(md5.H, d, a, b, c, block[12], 0xe6db99e5, 11)
-                c = md5.md5_step(md5.H, c, d, a, b, block[15], 0x1fa27cf8, 16)
-                b = md5.md5_step(md5.H, b, c, d, a, block[2], 0xc4ac5665, 23)
+                c = Q[38] = (((c << 16) & 0xFFFFFFFF | c >> 16) + d) & 0xFFFFFFFF
+                b = Q[39] = md5.md5_step(md5.H, b, c, d, a, block[14], 0xfde5380c, 23)
+                a = Q[40] = md5.md5_step(md5.H, a, b, c, d, block[1], 0xa4beea44, 4)
+                d = Q[41] = md5.md5_step(md5.H, d, a, b, c, block[4], 0x4bdecfa9, 11)
+                c = Q[42] = md5.md5_step(md5.H, c, d, a, b, block[7], 0xf6bb4b60, 16)
+                b = Q[43] = md5.md5_step(md5.H, b, c, d, a, block[10], 0xbebfbc70, 23)
+                a = Q[44] = md5.md5_step(md5.H, a, b, c, d, block[13], 0x289b7ec6, 4)
+                d = Q[45] = md5.md5_step(md5.H, d, a, b, c, block[0], 0xeaa127fa, 11)
+                c = Q[46] = md5.md5_step(md5.H, c, d, a, b, block[3], 0xd4ef3085, 16)
+                b = Q[47] = md5.md5_step(md5.H, b, c, d, a, block[6], 0x04881d05, 23)
+                a = Q[48] = md5.md5_step(md5.H, a, b, c, d, block[9], 0xd9d4d039, 4)
+                d = Q[49] = md5.md5_step(md5.H, d, a, b, c, block[12], 0xe6db99e5, 11)
+                c = Q[50] = md5.md5_step(md5.H, c, d, a, b, block[15], 0x1fa27cf8, 16)
+                b = Q[51] = md5.md5_step(md5.H, b, c, d, a, block[2], 0xc4ac5665, 23)
                 if 0 != ((b ^ d) & 0x80000000):
                     continue
 
-                a = md5.md5_step(md5.I, a, b, c, d, block[0], 0xf4292244, 6)
+                a = Q[52] = md5.md5_step(md5.I, a, b, c, d, block[0], 0xf4292244, 6)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                d = md5.md5_step(md5.I, d, a, b, c, block[7], 0x432aff97, 10)
+
+                d = Q[53] = md5.md5_step(md5.I, d, a, b, c, block[7], 0x432aff97, 10)
                 if 0 == ((b ^ d) >> 31):
                     continue
-                c = md5.md5_step(md5.I, c, d, a, b, block[14], 0xab9423a7, 15)
+
+                c = Q[54] = md5.md5_step(md5.I, c, d, a, b, block[14], 0xab9423a7, 15)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                b = md5.md5_step(md5.I, b, c, d, a, block[5], 0xfc93a039, 21)
+
+                b = Q[55] = md5.md5_step(md5.I, b, c, d, a, block[5], 0xfc93a039, 21)
                 if 0 != ((b ^ d) >> 31):
                     continue
-                a = md5.md5_step(md5.I, a, b, c, d, block[12], 0x655b59c3, 6)
+
+                a = Q[56] = md5.md5_step(md5.I, a, b, c, d, block[12], 0x655b59c3, 6)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                d = md5.md5_step(md5.I, d, a, b, c, block[3], 0x8f0ccc92, 10)
+
+                d = Q[57] = md5.md5_step(md5.I, d, a, b, c, block[3], 0x8f0ccc92, 10)
                 if 0 != ((b ^ d) >> 31):
                     continue
-                c = md5.md5_step(md5.I, c, d, a, b, block[10], 0xffeff47d, 15)
+
+                c = Q[58] = md5.md5_step(md5.I, c, d, a, b, block[10], 0xffeff47d, 15)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                b = md5.md5_step(md5.I, b, c, d, a, block[1], 0x85845dd1, 21)
+
+                b = Q[59] = md5.md5_step(md5.I, b, c, d, a, block[1], 0x85845dd1, 21)
                 if 0 != ((b ^ d) >> 31):
                     continue
-                a = md5.md5_step(md5.I, a, b, c, d, block[8], 0x6fa87e4f, 6)
+
+                a = Q[60] = md5.md5_step(md5.I, a, b, c, d, block[8], 0x6fa87e4f, 6)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                d = md5.md5_step(md5.I, d, a, b, c, block[15], 0xfe2ce6e0, 10)
+
+                d = Q[61] = md5.md5_step(md5.I, d, a, b, c, block[15], 0xfe2ce6e0, 10)
                 if 0 != ((b ^ d) >> 31):
                     continue
-                c = md5.md5_step(md5.I, c, d, a, b, block[6], 0xa3014314, 15)
+
+                c = Q[62] = md5.md5_step(md5.I, c, d, a, b, block[6], 0xa3014314, 15)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                b = md5.md5_step(md5.I, b, c, d, a, block[13], 0x4e0811a1, 21)
+
+                b = Q[63] = md5.md5_step(md5.I, b, c, d, a, block[13], 0x4e0811a1, 21)
                 if 0 == ((b ^ d) >> 31):
                     continue
-                a = md5.md5_step(md5.I, a, b, c, d, block[4], 0xf7537e82, 6)
+
+                a = Q[64] = md5.md5_step(md5.I, a, b, c, d, block[4], 0xf7537e82, 6)
                 if 0 != ((a ^ c) >> 31):
                     continue
-                d = md5.md5_step(md5.I, d, a, b, c, block[11], 0xbd3af235, 10)
+
+                d = Q[65] = md5.md5_step(md5.I, d, a, b, c, block[11], 0xbd3af235, 10)
                 if 0 != ((b ^ d) >> 31):
                     continue
-                c = md5.md5_step(md5.I, c, d, a, b, block[2], 0x2ad7d2bb, 15)
+
+                c = Q[66] = md5.md5_step(md5.I, c, d, a, b, block[2], 0x2ad7d2bb, 15)
                 if 0 != ((a ^ c) >> 31):
                     continue
+
+                b = Q[67] = md5.md5_step(md5.I, b, c, d, a, block[9], 0xeb86d391, 21)
 
                 print(".S01")
 
@@ -315,13 +330,9 @@ def find_block1_stevens_01(IV):
 
                 IV1 = md5.compress(IV1, block)
                 IV2 = md5.compress(IV2, block2)
-                print(f"{IV1}")
-                print(f"{IV2}")
-                print(f"{block}, {Q[4:]}")
-                print("TEST!!!")
-                print(f"01: {IV2[0] == IV1[0]}, {IV2[1] == IV1[1]}, {IV2[2] == IV1[2]}, {IV2[3] == IV1[3]}")
+
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
-                    print(f"\nFound block: {block}")
+                    print(f"\nFound block 1 Stevens 01")
                     return [block, IV1, Q[4:]]
 
                 if IV2[0] != IV1[0]:

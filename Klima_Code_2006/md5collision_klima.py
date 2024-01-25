@@ -1222,8 +1222,8 @@ def main():
 
     cpuCount = int(cpu_count() * 0.9)
     seeds = [None] * cpuCount
-    if len(sys.argv) > 1 and type(sys.argv[1]) is int:
-        seedStep = sys.argv[1]
+    if len(sys.argv) > 1 and type(int(sys.argv[1])) is int:
+        seedStep = int(sys.argv[1])
         seeds = [((i + 1) * seedStep) for i in range(cpuCount)]
     print(f"Starting with RNG seeds {seeds}")
     with Pool(cpuCount) as p:
