@@ -133,9 +133,11 @@ def main():
                                     elem2[1] += 1
                                     elem2[2] = float(splitLine[len(splitLine)-1].split(": ")[1])
                     elif i == 5:
-                        Qs += [elem.split(", ")[1:]]
+                        Qs += [elem[3:].split(", ")]
+                        # Qs += [elem.split(",")[1:]]
                     elif i == 6:
-                        Q2s += [elem.split(",")[1:]]
+                        Q2s += [elem[3:].split(", ")]
+                        # Q2s += [elem.split(",")[1:]]
                     elif i == 9:
                         avgBlock1Time += [float(elem.split(": ")[1])]
                     elif i == 10:
@@ -155,20 +157,49 @@ def main():
         averageCollisionTime += process[1] * process[2]
     averageCollisionTime /= collisionCount
     # print(averageCollisionTime)
-    # print(Qs)
+    print(Qs)
     # print(Q2s)
     # print(avgBlock1Time)
     # print(avgBlock2Time)
     # print(avgCollTime)
-    bitDistribution = getBitDistribution(Qs)
-    print(bitDistribution)
+    bitDistributionQs = getBitDistribution(Qs)
+    bitDistributionQ2s = getBitDistribution(Q2s)
+    # print(bitDistributionQs)
+    # print(bitDistributionQ2s)
 
-    filePath = os.path.join(os.getcwd(), f"distribution_{sys.argv[1]}")
-    with open(filePath, "w+") as file:
-        for state in bitDistribution:
-            for elem in state:
-                file.write(f"{elem} ")
+    distributionFilePath = os.path.join(os.getcwd(), f"distribution_{sys.argv[1]}")
+    bitcondFilePath = os.path.join(os.getcwd(), f"bitConditions_{sys.argv[1]}")
+    with open(distributionFilePath, "w+") as file, open(bitcondFilePath, "w+") as file2:
+        for state in bitDistributionQs:
+            for i, elem in enumerate(state):
+                file.write(f"{elem}  ")
+                if elem == "1.0000":
+                    file2.write(f"1 ")
+                elif elem == "0.0000":
+                    file2.write(f"0 ")
+                else:
+                    file2.write(f". ")
+                if i % 8 == 7:
+                    file.write(f"\t")
+                    file2.write(f"\t")
             file.write(f"\n")
+            file2.write(f"\n")
+        file.write(f"\n")
+        file2.write(f"\n")
+        for state in bitDistributionQ2s:
+            for i, elem in enumerate(state):
+                file.write(f"{elem}  ")
+                if elem == "1.0000":
+                    file2.write(f"1 ")
+                elif elem == "0.0000":
+                    file2.write(f"0 ")
+                else:
+                    file2.write(f". ")
+                if i % 8 == 7:
+                    file.write(f"\t")
+                    file2.write(f"\t")
+            file.write(f"\n")
+            file2.write(f"\n")
         file.close()
     end = time.perf_counter()
     print(f"Took {end - start} seconds for everything")

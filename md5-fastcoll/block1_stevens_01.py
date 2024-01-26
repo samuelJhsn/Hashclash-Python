@@ -333,7 +333,7 @@ def find_block1_stevens_01(IV):
 
                 if IV2[0] == IV1[0] and IV2[1] == IV1[1] and IV2[2] == IV1[2] and IV2[3] == IV1[3]:
                     print(f"\nFound block 1 Stevens 01")
-                    return [block, IV1, Q[4:]]
+                    return [block, IV1, Q, "St01"]
 
                 if IV2[0] != IV1[0]:
                     print("!")

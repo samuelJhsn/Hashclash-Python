@@ -15,6 +15,7 @@ collision_count = 0  # ulong
 time3 = time4 = time5 = 0  # double
 now = datetime.now().strftime("%d%m%Y-%H%M%S")
 
+
 def main():
     newDir = os.path.join(os.getcwd(), "collisions")
 
@@ -45,7 +46,8 @@ def find_collision(seed):
     while True:
         filePath = os.path.join(os.getcwd(), "collisions", f"state_{now}.txt")
         with open(filePath, "a+") as file:
-            file.write(f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}: state is {random.getstate()}\n\n")
+            file.write(
+                f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}: state is {random.getstate()}\n\n")
             file.close()
 
         IV0 = IV.copy()
@@ -72,7 +74,7 @@ def find_collision(seed):
         msg1_block1 = block1result[0]
         hashDigest = block1result[1]
         Q2 = block1result[2]
-
+        bitCondID = block1result[3]
 
         msg2_block0 = msg1_block0.copy()
         msg2_block1 = msg1_block1.copy()
@@ -88,7 +90,7 @@ def find_collision(seed):
 
         print("Found collision, saving...")
 
-        result = [f"{os.getpid()} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}",
+        result = [f"{os.getpid()} @ {bitCondID} @ {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}",
                   f"IV: {', '.join('0x{:08x}'.format(num) for num in IV0)}",
                   f"Hash digest: {', '.join('0x{:08x}'.format(num) for num in hashDigest)}",
                   f"m1: {', '.join('0x{:08x}'.format(num) for num in msg1_block0)}, {', '.join('0x{:08x}'.format(num) for num in msg1_block1)}",
@@ -105,7 +107,6 @@ def find_collision(seed):
         with open(filePath, "a+") as file:
             file.write(f"{result}\n")
             file.close()
-
 
 
 if __name__ == '__main__':
