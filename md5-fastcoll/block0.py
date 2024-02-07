@@ -47,6 +47,7 @@ import md5
 
 
 def find_block0(IV):
+    print(IV)
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
@@ -61,7 +62,6 @@ def find_block0(IV):
               for k in range(len(q9mask))]
 
     while True:
-
         Q[4] = random.randint(0, (2 ** 32) - 1)
         Q[6] = (random.randint(0, (2 ** 32) - 1) & 0xfe87bc3f) | 0x017841c0
         Q[7] = (random.randint(0, (2 ** 32) - 1) & 0x44000033) | 0x000002c0 | (Q[6] & 0x0287bc00)
