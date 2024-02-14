@@ -20,85 +20,17 @@ def getBitDistribution(states):
     bitDistribution = [[0] * 32] * 64
     states = [[list(map(int, list(f'{int(Q, 16):0>32b}'))) for Q in state] for state in states]
     startBitCount = time.perf_counter()
-
     for state in states:
         for i, Q in enumerate(state):
             bitDistribution[i] = list(map(add, bitDistribution[i], Q))
 
-    bitDistribution = [[f"{round(bitCount / stateCount, 5):.5f}"[:-1] for bitCount in state] for state in bitDistribution]
+    bitDistribution = [[f"{round(bitCount / stateCount, 16):.16f}"[:-1] for bitCount in state] for state in
+                       bitDistribution]
     endBitCount = time.perf_counter()
 
     print(f"Took {endBitCount - startBitCount} seconds to count {len(states) * 64 * 32} bits in all states.")
 
     return bitDistribution
-
-
-def getRandomWalkStats(hashes, hashFunction):
-    bitsPerHash = 8 * hashFunction().digest_size
-    hashesRandWalk = [[h, bitsPerHash / 2 - sum(h)]
-                      for h in hashes]  # Map each hash to pair (itself, hashlength - N of 1-bits)
-    oldDir = os.getcwd()
-    newDir = os.getcwd() + "\\randomWalks"
-    if not os.path.exists(newDir):
-        os.makedirs(newDir)
-    os.chdir(newDir)
-
-    id = datetime.now().strftime("%H_%M_%S_") + f"{os.getpid()}"
-    plt.figure(id)
-    plt.xlabel("bit position")
-    plt.ylabel("cumulative bit value")
-
-    allMaxY = []
-    allMinY = []
-    allZeroPos = []
-    endPoints = []
-    xPos = [i for i in range(bitsPerHash + 1)]
-    for i, pair in enumerate(hashesRandWalk):
-        y = 0
-        maxY = 0
-        minY = 0
-        zeroPos = []
-        yPos = [0]
-        for j, bit in enumerate(pair[0]):
-            if y == 0:
-                zeroPos += [xPos[j]]
-            y += (int(bit) * 2 - 1)
-            if maxY < y:
-                maxY = y
-            if minY > y:
-                minY = y
-            yPos.append(y)
-
-        endPoints += [y]
-        allMaxY += [maxY]
-        allMinY += [minY]
-        allZeroPos += zeroPos
-        if (i + 2000) % 2000 == 0:
-            plt.figure(id + str(i))
-            ax = plt.gca()
-            ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
-            plt.xlabel("bit position")
-            plt.ylabel("cumulative bit value")
-            plt.plot(xPos, yPos)
-            # plt.scatter(zeroPos, [0] * len(zeroPos), marker="o")
-            plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 5] * len(zeroPos) + [ax.get_ylim()[1] // 5] * len(zeroPos),
-                        marker="o")
-            plt.savefig(id + str(i))
-        plt.figure(id)
-        plt.plot(xPos, yPos)
-
-    plt.figure(id)
-    ax = plt.gca()
-    ax.set_ylim([min(-40, min(allMinY) - 5), max(40, max(allMaxY) + 5)])
-    plt.savefig(id)
-
-    randomWalkStats = [round((np.mean([elem for elem in allZeroPos if elem != 0])), 1),
-                       min(allMinY), max(allMaxY), round((np.mean(endPoints)), 4), allZeroPos, endPoints]
-
-    os.chdir(oldDir)
-
-    return randomWalkStats
-
 
 # warnings.filterwarnings("ignore")
 # @jit(target_backend='cuda', nopython=False)
@@ -107,41 +39,54 @@ def main():
     processIds = []
     collisionsPerProcess = []
     Qs = []
-    Q2s = []
-    avgBlock1Time = []
-    avgBlock2Time = []
+    Q2s = [[], [], [], [], [], []]
+    avgBlock1Times = []
+    avgBlock2Times = [[], [], [], [], [], []]
     avgCollTime = []
     try:
         with open(sys.argv[1], "r") as log:
             next(log)
             collisionCount = 0
             for line in log:
-                # print(line)
                 collisionCount += 1
                 line = re.sub("\['|'\]\n", '', line)
                 splitLine = line.split("', '")
+                match splitLine[0].split(" @ ")[1]:
+                    case "St00":
+                        block2Type = 0
+                    case "St01":
+                        block2Type = 1
+                    case "St10":
+                        block2Type = 2
+                    case "St11":
+                        block2Type = 3
+                    case _:
+                        block2Type = 4
                 for i, elem in enumerate(splitLine):
-                    if elem in ["[", "]\n", ", "]:
-                        splitLine.remove(elem)
-                    elif i == 0:
+                    if i == 0:
                         if elem.split()[0] not in processIds:
                             processIds += [elem.split()[0]]
-                            collisionsPerProcess += [[elem.split()[0], 1, float(splitLine[len(splitLine)-1].split(": ")[1])]]
+                            collisionsPerProcess += [
+                                [elem.split()[0], 1, float(splitLine[len(splitLine) - 1].split(": ")[1])]]
                         else:
                             for elem2 in collisionsPerProcess:
                                 if elem2[0] == elem.split()[0]:
                                     elem2[1] += 1
-                                    elem2[2] = float(splitLine[len(splitLine)-1].split(": ")[1])
+                                    elem2[2] = float(splitLine[len(splitLine) - 1].split(": ")[1])
                     elif i == 5:
-                        Qs += [elem[3:].split(", ")]
-                        # Qs += [elem.split(",")[1:]]
+                        if elem[3:13] == "0x00000000":
+                            Qs += [elem[15:].split(", ")]
+                        else:
+                            Qs += [elem[3:].split(", ")]
                     elif i == 6:
-                        Q2s += [elem[3:].split(", ")]
-                        # Q2s += [elem.split(",")[1:]]
+                        if elem[4:14] == "0x00000000":
+                            Q2s[block2Type] += [elem[16:].split(", ")[4:]]
+                        else:
+                            Q2s[block2Type] += [elem[4:].split(", ")[4:]]
                     elif i == 9:
-                        avgBlock1Time += [float(elem.split(": ")[1])]
+                        avgBlock1Times += [float(elem.split(": ")[1])]
                     elif i == 10:
-                        avgBlock2Time += [float(elem.split(": ")[1])]
+                        avgBlock2Times[block2Type] += [float(elem.split(": ")[1])]
                     elif i == 11:
                         avgCollTime += [float(elem.split(": ")[1])]
 
@@ -149,60 +94,57 @@ def main():
     except FileNotFoundError as fileNoFoErr:
         print(f"{fileNoFoErr}")
         sys.exit(1)
-    # print(processIds)
+
     collisionsPerProcess.sort()
-    print(collisionCount)
     averageCollisionTime = 0
     for process in collisionsPerProcess:
         averageCollisionTime += process[1] * process[2]
     averageCollisionTime /= collisionCount
-    # print(averageCollisionTime)
-    print(Qs)
-    # print(Q2s)
-    # print(avgBlock1Time)
-    # print(avgBlock2Time)
-    # print(avgCollTime)
+    print(f"Average collision time for all {collisionCount} collisions: {averageCollisionTime}")
     bitDistributionQs = getBitDistribution(Qs)
-    bitDistributionQ2s = getBitDistribution(Q2s)
-    # print(bitDistributionQs)
-    # print(bitDistributionQ2s)
+    bitDistributionQ2s = []
+    for Q2 in Q2s:
+        if Q2:
+            bitDistributionQ2s += [getBitDistribution(Q2)]
+    makeTables([bitDistributionQs, *bitDistributionQ2s])
 
-    distributionFilePath = os.path.join(os.getcwd(), f"distribution_{sys.argv[1]}")
-    bitcondFilePath = os.path.join(os.getcwd(), f"bitConditions_{sys.argv[1]}")
-    with open(distributionFilePath, "w+") as file, open(bitcondFilePath, "w+") as file2:
-        for state in bitDistributionQs:
-            for i, elem in enumerate(state):
-                file.write(f"{elem}  ")
-                if elem == "1.0000":
-                    file2.write(f"1 ")
-                elif elem == "0.0000":
-                    file2.write(f"0 ")
-                else:
-                    file2.write(f". ")
-                if i % 8 == 7:
-                    file.write(f"\t")
-                    file2.write(f"\t")
-            file.write(f"\n")
-            file2.write(f"\n")
-        file.write(f"\n")
-        file2.write(f"\n")
-        for state in bitDistributionQ2s:
-            for i, elem in enumerate(state):
-                file.write(f"{elem}  ")
-                if elem == "1.0000":
-                    file2.write(f"1 ")
-                elif elem == "0.0000":
-                    file2.write(f"0 ")
-                else:
-                    file2.write(f". ")
-                if i % 8 == 7:
-                    file.write(f"\t")
-                    file2.write(f"\t")
-            file.write(f"\n")
-            file2.write(f"\n")
-        file.close()
     end = time.perf_counter()
     print(f"Took {end - start} seconds for everything")
+
+
+def makeTables(bitDistributions):
+    now = datetime.now().strftime("%H_%M_%S")
+    counter = 0
+    newDir = os.getcwd() + "\\bitConditions"
+    if not os.path.exists(newDir):
+        os.makedirs(newDir)
+    os.chdir(newDir)
+    for bitDistribution in bitDistributions:
+        distributionFilePath = os.path.join(newDir, f"{counter}_distribution_{now}.txt")
+        bitcondFilePath = os.path.join(newDir, f"{counter}_bitConditions_{now}.txt")
+        with open(distributionFilePath, "w+") as file, open(bitcondFilePath, "w+") as file2:
+            counter += 1
+            for i, state in enumerate(bitDistribution):
+                for j, elem in enumerate(state):
+                    file.write(f"{elem}  ")
+                    if elem == "1.000000000000000":
+                        file2.write(f"1 ")
+                    elif elem == "0.000000000000000":
+                        file2.write(f"0 ")
+                    elif i > 0 and elem == bitDistribution[i - 1][j]:
+                        file2.write(f"^ ")
+                    elif i > 0 and (float(elem) + float(bitDistribution[i - 1][j])) == 1:
+                        file2.write(f"! ")
+                    else:
+                        file2.write(f". ")
+                    if j % 8 == 7:
+                        file.write(f"\t")
+                        file2.write(f"\t")
+                file.write(f"\n")
+                file2.write(f"\n")
+
+            file.close()
+    print("Done")
 
 
 def freedmanDiaconisBinCount(data):

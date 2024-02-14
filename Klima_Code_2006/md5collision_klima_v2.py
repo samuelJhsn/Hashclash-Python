@@ -66,9 +66,9 @@ from multiprocessing import cpu_count, Pool
 Q = [0] * 65
 collision_count = 0  # ulong
 out_filename = [""] * 64  # char
-P_IHV1, P_HIHV1 = [0] * 4, [0] * 4  # ulong
+IHV_1, HIHV_1 = [0] * 4, [0] * 4  # ulong
 buffer = [""] * 2048  # char
-time3 = time4 = time5 = 0  # double
+time_blocks_cumulative = time_block0_cumulative = time_block1_cumulative = 0  # double
 now = datetime.datetime.now()
 
 x1, M1 = [""] * 16, [""] * 16  # unsigned char
@@ -677,7 +677,7 @@ def B1():
                                         ((HIHV1[3] - IHV1[3] - 0x82000000) % (1 << 32)) != 0):
                                     continue
 
-                                global P_IHV1, P_HIHV1, x1, M1
+                                global IHV_1, HIHV_1, x1, M1
                                 P_IHV1 = IHV1.copy()
                                 P_HIHV1 = HIHV1.copy()
                                 x1 = x.copy()
@@ -713,7 +713,7 @@ def B1():
                                 # now.wHour,now.wMinute,now.wSecond,now.wMilliseconds)
                                 print(f"The second block collision took {time2} second")
 
-                                global collision_count, time3, time4, time5
+                                global collision_count, time_blocks_cumulative, time_block0_cumulative, time_block1_cumulative
                                 collision_count += 1
                                 time3 += time1 + time2
                                 time4 += time1
@@ -749,10 +749,10 @@ def B2():
     global Q
     x = [0] * 16
 
-    QM3 = P_IHV1[0]
-    QM2 = P_IHV1[3]
-    CC0 = QM1 = P_IHV1[2]
-    BB0 = QM0 = P_IHV1[1]
+    QM3 = IHV_1[0]
+    QM2 = IHV_1[3]
+    CC0 = QM1 = IHV_1[2]
+    BB0 = QM0 = IHV_1[1]
     bitI = BB0 & longmask[32]
     bit_neg_I = (~BB0) & longmask[32]
 
@@ -1084,10 +1084,10 @@ def B2():
                         continue  # not necessary (Sasaki), try to remove
 
                     IHV2 = [0] * 4
-                    IHV2[0] = (P_IHV1[0] + Q[61]) & 0xFFFFFFFF
-                    IHV2[1] = (P_IHV1[1] + Q[64]) & 0xFFFFFFFF
-                    IHV2[2] = (P_IHV1[2] + Q[63]) & 0xFFFFFFFF
-                    IHV2[3] = (P_IHV1[3] + Q[62]) & 0xFFFFFFFF
+                    IHV2[0] = (IHV_1[0] + Q[61]) & 0xFFFFFFFF
+                    IHV2[1] = (IHV_1[1] + Q[64]) & 0xFFFFFFFF
+                    IHV2[2] = (IHV_1[2] + Q[63]) & 0xFFFFFFFF
+                    IHV2[3] = (IHV_1[3] + Q[62]) & 0xFFFFFFFF
 
                     M = x.copy()
 
@@ -1095,9 +1095,9 @@ def B2():
                     M[11] = (x[11] - 0x00008000) % (1 << 32)
                     M[14] = (x[14] - 0x80000000) % (1 << 32)
 
-                    md5.compress(P_HIHV1, M)
+                    md5.compress(HIHV_1, M)
 
-                    HIHV2 = P_HIHV1.copy()
+                    HIHV2 = HIHV_1.copy()
                     print(f"Block2: {os.getpid()}")
                     print((HIHV2[0] - IHV2[0]) % (1 << 32))
                     print((HIHV2[1] - IHV2[1]) % (1 << 32))
@@ -1112,12 +1112,12 @@ def B2():
                     global x1, M1
                     print(f"Block 1: {list(map(hex, x1))}, {list(map(hex, x))}")
                     print(f"Block 2: {list(map(hex, M1))}, {list(map(hex, M))}")
-                    md5.compress(P_IHV1, x)  # Compression of P_HIHV1 already done before ^
+                    md5.compress(IHV_1, x)  # Compression of P_HIHV1 already done before ^
                     # print(P_IHV1)
-                    print(f"Hash digest H: {P_IHV1}")
-                    print(f"Hash digest H': {P_HIHV1}")
-                    for i in range(len(P_IHV1)):
-                        if P_IHV1[i] != P_HIHV1[i]:
+                    print(f"Hash digest H: {IHV_1}")
+                    print(f"Hash digest H': {HIHV_1}")
+                    for i in range(len(IHV_1)):
+                        if IHV_1[i] != HIHV_1[i]:
                             return -1
                     print("SUPER DONEEEEEEEE!!!!!!!!!!")
                     #     print("Check: The same MD5 hash\n" )

@@ -11,11 +11,11 @@ import math
 from operator import add
 import matplotlib.pyplot as plt
 import seaborn as sns
+from collections import Counter
+import pandas as pd
 
-
+# TODO: Bit distribution of random bit strings with diagram
 def getHashes(compRoomStart, compRoomEnd, hashFunction):
-    startGenBits = time.perf_counter()
-
     randomBitString = True
     bitStrings = []
     if randomBitString:
@@ -25,17 +25,10 @@ def getHashes(compRoomStart, compRoomEnd, hashFunction):
     else:
         bitStrings = [e.to_bytes(math.ceil(e.bit_length() / 8), byteorder='big')
                       for e in range(compRoomStart, compRoomEnd)]
-    endGenBits = time.perf_counter()
-
-    startHashing = time.perf_counter()
 
     hashes = [hashFunction(bitString).hexdigest() for bitString in bitStrings]
-    print(hashes)
     hashes = [list(f'{int(h, 16):0>{8 * hashFunction().digest_size}b}') for h in hashes]
-    print(hashes)
     hashes = [[int(numba) for numba in h] for h in hashes]
-    print(hashes)
-    endHashing = time.perf_counter()
 
     return hashes
 
@@ -95,7 +88,7 @@ def getRandomWalkStats(hashes, hashFunction):
         allMaxY += [maxY]
         allMinY += [minY]
         allZeroPos += zeroPos
-        if (i + 2000) % 2000 == 0:
+        if (i + 100000) % 100000 == 0:
             plt.figure(id + str(i))
             ax = plt.gca()
             ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
@@ -103,15 +96,23 @@ def getRandomWalkStats(hashes, hashFunction):
             plt.ylabel("cumulative bit value")
             plt.plot(xPos, yPos)
             # plt.scatter(zeroPos, [0] * len(zeroPos), marker="o")
-            plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 5] * len(zeroPos) + [ax.get_ylim()[1] // 5] * len(zeroPos),
-                        marker="o")
-            plt.savefig(id + str(i))
+            # plt.scatter(zeroPos * 2, [ax.get_ylim()[0] // 5] * len(zeroPos) + [ax.get_ylim()[1] // 5] * len(zeroPos), marker="o")
+            plt.savefig(id + "_" + str(i))
         plt.figure(id)
         plt.plot(xPos, yPos)
 
     plt.figure(id)
     ax = plt.gca()
-    ax.set_ylim([min(-40, min(allMinY) - 5), max(40, max(allMaxY) + 5)])
+
+    # Set y-axis limit symetrically to either extreme value or else 40
+    yLimit = max(40, -min(allMinY) + 5, max(allMaxY) + 5)
+    ax.set_ylim(-yLimit, yLimit)
+    # Set the ticks for x- and y-axis
+    xticks = list(range(0, bitsPerHash+1, 8))
+    yticks = list(range(0, -yLimit, -5)) + list(range(0, yLimit, 5))[1:]
+    plt.xticks(xticks)
+    plt.yticks(yticks)
+
     plt.savefig(id)
 
     randomWalkStats = [round((np.mean([elem for elem in allZeroPos if elem != 0])), 1),
@@ -154,23 +155,23 @@ def main():
         hashes = p.starmap(getHashes, hashingParams)
         statParams = [(partOfHashes, hashFunction,) for partOfHashes in hashes]
 
-        # distribution = p.starmap(getBitDistribution, statParams)
+        distribution = p.starmap(getBitDistribution, statParams)
         randWalkStats = p.starmap(getRandomWalkStats, statParams)
 
-    # distribution = [sum(x) for x in zip(*distribution)]
+    distribution = [sum(x) for x in zip(*distribution)]
 
-    # np.savetxt("distribution.csv",
-    #            distribution,
-    #            delimiter=", ",
-    #            fmt="% s")
+    np.savetxt("distribution.csv",
+               distribution,
+               delimiter=", ",
+               fmt="% s")
 
     allZeroPos = [result[4] for result in randWalkStats]
     allZeroPos = sum(allZeroPos, [])
-    makeHistogram(allZeroPos, "zeroPos")
+    makeBarplot(allZeroPos, "zeroPos")
 
     allEndPoints = [result[5] for result in randWalkStats]
     allEndPoints = sum(allEndPoints, [])
-    makeHistogram(allEndPoints, "allEndPoints")
+    makeBarplot(allEndPoints, "allEndPoints")
 
     for result in randWalkStats:
         del result[-2:]
@@ -216,15 +217,17 @@ def getCompRooms(minPower=0, maxPower=0, cpuCount=1):
 def freedmanDiaconisBinCount(data):
     q25, q75 = np.percentile(data, [25, 75])
     bin_width = 2 * (q75 - q25) * len(data) ** (-1 / 3)
-    bins = round((max(data) - min(data) / bin_width))
+    bins = round(((max(data)+1) - min(data) / bin_width))
     return bins
 
 
-def makeHistogram(data, graphName=""):
+def makeBarplot(data, graphName=""):
     bins = freedmanDiaconisBinCount(data)
 
     plt.figure(f"sns_{graphName}.png")
     sns.displot(data, bins=bins, kde=True)
+    xticks = list(range(min(data), max(data) + 1, 8))
+    plt.xticks(xticks)
     plt.ylabel('Count')
     plt.xlabel('Data')
     plt.savefig(f"sns_{graphName}.png")
