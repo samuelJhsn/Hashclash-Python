@@ -11,16 +11,14 @@ import math
 from operator import add
 import matplotlib.pyplot as plt
 import seaborn as sns
-from collections import Counter
-import pandas as pd
 
-# TODO: Bit distribution of random bit strings with diagram
+
 def getHashes(compRoomStart, compRoomEnd, hashFunction):
     randomBitString = True
     bitStrings = []
     if randomBitString:
         for _ in range(compRoomStart, compRoomEnd):
-            randomNumba = random.randint(0, 2 ** 445)
+            randomNumba = random.randint(0, 2 ** 512)
             bitStrings.append(randomNumba.to_bytes(math.ceil(randomNumba.bit_length() / 8), byteorder='big'))
     else:
         bitStrings = [e.to_bytes(math.ceil(e.bit_length() / 8), byteorder='big')
@@ -30,11 +28,24 @@ def getHashes(compRoomStart, compRoomEnd, hashFunction):
     hashes = [list(f'{int(h, 16):0>{8 * hashFunction().digest_size}b}') for h in hashes]
     hashes = [[int(numba) for numba in h] for h in hashes]
 
-    return hashes
+    bitStrings = [bitString.hex() for bitString in bitStrings]
+    bitStrings = [list(f'{int(bitString, 16):0>512b}') for bitString in bitStrings]
+    bitStrings = [[int(numba) for numba in bitString] for bitString in bitStrings]
+
+    return hashes, bitStrings
 
 
-def getBitDistribution(hashes, hashFunction):
-    bitDistribution = [0 for _ in range(8 * hashFunction().digest_size + 1)]
+def calcBitDistribution(bitStrings):
+    bitDistribution = [0] * 512
+
+    for bitString in bitStrings:
+        bitDistribution = list(map(add, bitDistribution, bitString))
+
+    return bitDistribution
+
+
+def getHashBitDistribution(hashes, hashFunction):
+    bitDistribution = [0] * (8 * hashFunction().digest_size)
 
     startBitCount = time.perf_counter()
 
@@ -43,7 +54,7 @@ def getBitDistribution(hashes, hashFunction):
     endBitCount = time.perf_counter()
 
     print(f"Took {endBitCount - startBitCount} seconds to count "
-         f"{8 * hashlib.md5().digest_size * len(hashes)} bits in all hashes.")
+          f"{8 * hashlib.md5().digest_size * len(hashes)} bits in all hashes.")
 
     return bitDistribution
 
@@ -88,7 +99,7 @@ def getRandomWalkStats(hashes, hashFunction):
         allMaxY += [maxY]
         allMinY += [minY]
         allZeroPos += zeroPos
-        if (i + 100000) % 100000 == 0:
+        if (i + 500000) % 500000 == 0:
             plt.figure(id + str(i))
             ax = plt.gca()
             ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
@@ -108,7 +119,7 @@ def getRandomWalkStats(hashes, hashFunction):
     yLimit = max(40, -min(allMinY) + 5, max(allMaxY) + 5)
     ax.set_ylim(-yLimit, yLimit)
     # Set the ticks for x- and y-axis
-    xticks = list(range(0, bitsPerHash+1, 8))
+    xticks = list(range(0, bitsPerHash + 1, 8))
     yticks = list(range(0, -yLimit, -5)) + list(range(0, yLimit, 5))[1:]
     plt.xticks(xticks)
     plt.yticks(yticks)
@@ -136,7 +147,7 @@ def main():
         sys.exit(1)
 
     try:
-        cpuCount = cpu_count() // 2
+        cpuCount = int(cpu_count() * 0.9)
         compRooms = getCompRooms(0, int(sys.argv[2]), cpuCount)
     except ValueError as valErr:
         print(f"{valErr}: Expected int, found {type(sys.argv[2])}")
@@ -153,15 +164,24 @@ def main():
               f"processes (= {compRooms[0][1] * cpuCount} hashes), please "
               f"wait...")
         hashes = p.starmap(getHashes, hashingParams)
+        bitStrings = [pair[1] for pair in hashes]
+        hashes = [pair[0] for pair in hashes]
+
         statParams = [(partOfHashes, hashFunction,) for partOfHashes in hashes]
 
-        distribution = p.starmap(getBitDistribution, statParams)
+        distribution = p.starmap(getHashBitDistribution, statParams)
+        bitStringBitDistribution = p.map(calcBitDistribution, bitStrings)
         randWalkStats = p.starmap(getRandomWalkStats, statParams)
 
     distribution = [sum(x) for x in zip(*distribution)]
+    bitStringBitDistribution = [sum(x) for x in zip(*bitStringBitDistribution)]
 
     np.savetxt("distribution.csv",
                distribution,
+               delimiter=", ",
+               fmt="% s")
+    np.savetxt("bitStringBitDistribution.csv",
+               bitStringBitDistribution,
                delimiter=", ",
                fmt="% s")
 
@@ -190,7 +210,7 @@ def main():
         writer.writerows(randWalkStats)
 
     end = time.perf_counter()
-    print(f"Took {end - start} seconds to process {2 ** int(sys.argv[2])} values in {cpuCount} processes")
+    print(f"Took {end - start} seconds to process {compRooms[0][1] * cpuCount} values in {cpuCount} processes")
 
 
 def getCompRooms(minPower=0, maxPower=0, cpuCount=1):
@@ -210,14 +230,14 @@ def getCompRooms(minPower=0, maxPower=0, cpuCount=1):
         maxPower *= 1
     if minPower >= maxPower:
         minPower, maxPower = maxPower, minPower
-    hashesPerProcess = ((2 ** maxPower) - (2 ** minPower)) // cpuCount
+    hashesPerProcess = (((2 ** maxPower) - (2 ** minPower)) // cpuCount) + 1
     return [(hashesPerProcess * i, hashesPerProcess * (i + 1)) for i in range(cpuCount)]
 
 
 def freedmanDiaconisBinCount(data):
     q25, q75 = np.percentile(data, [25, 75])
     bin_width = 2 * (q75 - q25) * len(data) ** (-1 / 3)
-    bins = round(((max(data)+1) - min(data) / bin_width))
+    bins = round(((max(data) + 1) - min(data) / bin_width))
     return bins
 
 
