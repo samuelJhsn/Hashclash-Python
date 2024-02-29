@@ -3,6 +3,7 @@ import hashlib
 import os
 import random
 import time
+from collections import Counter
 from datetime import datetime
 import numpy as np
 import sys
@@ -11,7 +12,7 @@ import math
 from operator import add
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import pandas as pd
 
 def getHashes(compRoomStart, compRoomEnd, hashFunction):
     randomBitString = True
@@ -47,24 +48,19 @@ def calcBitDistribution(bitStrings):
 def getHashBitDistribution(hashes, hashFunction):
     bitDistribution = [0] * (8 * hashFunction().digest_size)
 
-    startBitCount = time.perf_counter()
-
     for h in hashes:
         bitDistribution = list(map(add, bitDistribution, h))
-    endBitCount = time.perf_counter()
-
-    print(f"Took {endBitCount - startBitCount} seconds to count "
-          f"{8 * hashlib.md5().digest_size * len(hashes)} bits in all hashes.")
 
     return bitDistribution
 
 
 def getRandomWalkStats(hashes, hashFunction):
+    print(f"Starting random walk calculations...")
     bitsPerHash = 8 * hashFunction().digest_size
     hashesRandWalk = [[h, bitsPerHash / 2 - sum(h)]
                       for h in hashes]  # Map each hash to pair (itself, hashlength - N of 1-bits)
     oldDir = os.getcwd()
-    newDir = os.getcwd() + "\\randomWalks"
+    newDir = os.path.join(os.getcwd(), "randomWalks")
     if not os.path.exists(newDir):
         os.makedirs(newDir)
     os.chdir(newDir)
@@ -94,12 +90,14 @@ def getRandomWalkStats(hashes, hashFunction):
             if minY > y:
                 minY = y
             yPos.append(y)
-
+        if y == 0:
+            zeroPos += [xPos[128]]
         endPoints += [y]
         allMaxY += [maxY]
         allMinY += [minY]
         allZeroPos += zeroPos
-        if (i + 500000) % 500000 == 0:
+        if (i + 1) % 50000 == 0:
+            print(f"Processed 50000 hashes for random walks...")
             plt.figure(id + str(i))
             ax = plt.gca()
             ax.set_ylim([-bitsPerHash // 3, bitsPerHash // 3])
@@ -157,7 +155,7 @@ def main():
         sys.exit(1)
 
     start = time.perf_counter()
-    plt.rcParams['figure.dpi'] = 300
+    plt.rcParams['figure.dpi'] = 2000
     with Pool(cpuCount) as p:
         hashingParams = [tup + (hashFunction,) for tup in compRooms]
         print(f"Generating {compRooms[0][1]} {sys.argv[1]} hashes in each of {cpuCount} "
@@ -171,12 +169,14 @@ def main():
 
         distribution = p.starmap(getHashBitDistribution, statParams)
         bitStringBitDistribution = p.map(calcBitDistribution, bitStrings)
+
         randWalkStats = p.starmap(getRandomWalkStats, statParams)
 
+    print("Saving distributions and random walks...")
     distribution = [sum(x) for x in zip(*distribution)]
     bitStringBitDistribution = [sum(x) for x in zip(*bitStringBitDistribution)]
 
-    np.savetxt("distribution.csv",
+    np.savetxt("hashDigestBitdistribution.csv",
                distribution,
                delimiter=", ",
                fmt="% s")
@@ -234,23 +234,19 @@ def getCompRooms(minPower=0, maxPower=0, cpuCount=1):
     return [(hashesPerProcess * i, hashesPerProcess * (i + 1)) for i in range(cpuCount)]
 
 
-def freedmanDiaconisBinCount(data):
-    q25, q75 = np.percentile(data, [25, 75])
-    bin_width = 2 * (q75 - q25) * len(data) ** (-1 / 3)
-    bins = round(((max(data) + 1) - min(data) / bin_width))
-    return bins
-
-
 def makeBarplot(data, graphName=""):
-    bins = freedmanDiaconisBinCount(data)
+    data = pd.DataFrame.from_dict(Counter(data), orient="index").reset_index().rename(columns={0: 'count'})
+    for scaleType in ["linear", "log"]:
+        plt.figure(f"{scaleType}_{graphName}.png")
+        ax = sns.barplot(x="index", y="count", data=data)
+        ax.set_yscale(scaleType)
+        plt.xticks(fontsize=5, rotation=90)
+        ax.bar_label(ax.containers[0], padding=1, fontsize=5, rotation=90, fmt="%d")
+        sns.despine(top=True, right=True)
 
-    plt.figure(f"sns_{graphName}.png")
-    sns.displot(data, bins=bins, kde=True)
-    xticks = list(range(min(data), max(data) + 1, 8))
-    plt.xticks(xticks)
-    plt.ylabel('Count')
-    plt.xlabel('Data')
-    plt.savefig(f"sns_{graphName}.png")
+        plt.xlabel('Coordinate')
+        plt.ylabel('Count')
+        plt.savefig(f"{scaleType}_{graphName}.png")
 
 
 if __name__ == '__main__':
