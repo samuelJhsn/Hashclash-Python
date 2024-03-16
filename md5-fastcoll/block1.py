@@ -50,6 +50,7 @@ import block1_stevens_11
 
 
 def find_block1(IV):
+    # Check conditions on IHV for one of Stevens blocks
     if (
             ((IV[1] ^ IV[2]) & (1 << 31)) == 0 and
             ((IV[1] ^ IV[3]) & (1 << 31)) == 0 and
@@ -57,7 +58,6 @@ def find_block1(IV):
             (IV[2] & (1 << 25)) == 0 and
             (IV[1] & (1 << 25)) == 0 and ((IV[2] ^ IV[1]) & 1) == 0
     ):
-
         IV2 = [IV[0] + (1 << 31) & 0xFFFFFFFF, IV[1] + (1 << 31) + (1 << 25) & 0xFFFFFFFF,
                IV[2] + (1 << 31) + (1 << 25) & 0xFFFFFFFF, IV[3] + (1 << 31) + (1 << 25) & 0xFFFFFFFF]
         if (IV[1] & (1 << 6)) != 0 and (IV[1] & 1) != 0:

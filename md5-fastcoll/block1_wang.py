@@ -47,7 +47,6 @@ import md5
 
 
 def find_block1_wang(IV):
-    superCounter = 0
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
@@ -64,8 +63,6 @@ def find_block1_wang(IV):
     q9mask2 = [(((k << 1) ^ (k << 7) ^ (k << 14) ^ (k << 15) ^ (k << 22)) & 0x6074041c) for k in range(len(q9mask2))]
 
     while True:
-        superCounter += 1
-
         aa = Q[3] & 0x80000000
         bb = 0x80000000 ^ aa
 
@@ -101,7 +98,6 @@ def find_block1_wang(IV):
 
         counter = 0
         while counter < (1 << 12):
-            # #print(f"counter: {counter}")
             counter += 1
 
             q1 = q1a | (random.randint(0, (2 ** 32) - 1) & 0x01c0e71f)
@@ -160,9 +156,10 @@ def find_block1_wang(IV):
 
         counter = 0
         while counter < (1 << 6):
+            counter += 1
 
             Q[7] = q4b ^ q4mask[counter]
-            counter += 1
+
             block[5] = md5.md5_reverse_step(5, Q, 0x4787c62a, 12)
 
             q21 = (tt21 + block[5]) & 0xFFFFFFFF
@@ -185,14 +182,11 @@ def find_block1_wang(IV):
 
             counter2 = 0
             while counter2 < (1 << 5):
-
+                counter2 += 1
                 q10 = q10b ^ q10mask[counter2]
-
                 m10 = md5.crs((Q[14] - q10) % (1 << 32), 17)
 
                 q9 = q9b ^ q9mask[counter2]
-                counter2 += 1
-
                 m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
 
                 aa = Q[24]

@@ -43,7 +43,6 @@ notice and the version number should be present.
 """
 
 import random
-
 import md5
 
 
@@ -174,11 +173,9 @@ def find_block1_stevens_00(IV):
         for k10 in range(1 << 3):
 
             q10 = q10b | (q9q10mask[k10] & 0x08000020)
-
             m10 = (md5.crs((Q[14] - q10) % (1 << 32), 17)) % (1 << 32)
 
             q9 = q9b | (q9q10mask[k10] & 0x00002000)
-
             m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
 
             aa = Q[24]

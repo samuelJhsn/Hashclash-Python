@@ -12,7 +12,7 @@ def replaceSub(match):
 
 if __name__ == '__main__':
     for file in os.listdir(os.getcwd()):
-        if file.endswith("TesteRegex.py"):
+        if file.endswith("REPLACEME.EXAMPLE"):
             with open(file, "r+") as f:
                 f.seek(0)
                 text = f.read()
@@ -31,12 +31,10 @@ if __name__ == '__main__':
                 text = re.sub(r"void", r"def", text)
                 text = re.sub(r"\+\+counter", r"counter += 1", text)
 
-
                 text = re.sub(r"const", r"", text)
                 text = re.sub(r"uint32", r"", text)
                 text = re.sub(r"unsigned", r"", text)
                 text = re.sub(r"std::cout << (\".\") << std::flush", r"print(\1, end=\"\"))", text)
-
 
                 text = re.sub(r"Qoff", r"3", text)
                 text = re.sub(r"Q\[3\s*\+\s*(\d*)]", replaceAdd, text)
@@ -55,7 +53,6 @@ if __name__ == '__main__':
                 text = re.sub(r"MD5_STEP\((.{5}), (\w),", r"\2 = md5.md5_step(\1, \2,", text)
                 text = re.sub(r"md5_compress\((.*), (.*)\)", r"\1 = md5.compress(\1, \2)", text)
 
-
                 text = re.sub(r"xrng64\(\)", r"random.randrange(0, (2 ** 32) - 1)", text)
 
                 text = re.sub(r"([^Q]) (= )(.*\+)+(.*)", r"\1 \2(\3\4) & 0xFFFFFFFF", text)
@@ -65,7 +62,6 @@ if __name__ == '__main__':
 
                 text = re.sub(r"Q\[68] = IV\[0], IV\[3], IV\[2], IV\[1]", r"block = [0] * 16 \
 Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64", text)
-
 
                 f.seek(0, 0)  # seek to beginning
                 f.write(text)

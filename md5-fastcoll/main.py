@@ -1,12 +1,11 @@
 import random
 import sys
-from datetime import datetime
-
 import block0
 import block1
 import md5
 import os
 import time
+from datetime import datetime
 from multiprocessing import Pool, cpu_count
 
 MD5IV = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476]
@@ -29,7 +28,7 @@ def main():
         file.write(f"Starting time: {datetime.now().strftime('%d.%m.%Y-%H:%M:%S')}\n")
         file.close()
 
-    # Use 90% of all CPU cores for multithreaded collision finding, possibly with given seed
+    # Use 90% of all CPU cores for multithreaded collision finding, use seed if given
     cpuCount = int(cpu_count() * 0.9)
     seeds = [None] * cpuCount
     if len(sys.argv) > 1 and type(int(sys.argv[1])) is int:

@@ -99,7 +99,6 @@ def find_block1_stevens_10(IV):
 
         counter = 0
         while counter < (1 << 12):
-
             counter += 1
 
             q1 = q1a | (random.randrange(0, (2 ** 32)) & 0x7dfdf6be)
@@ -162,7 +161,6 @@ def find_block1_stevens_10(IV):
             continue
 
         q9b = Q[12]
-
         q10b = Q[13]
 
         block[2] = md5.md5_reverse_step(2, Q, 0x242070db, 17)
@@ -179,11 +177,9 @@ def find_block1_stevens_10(IV):
         for k10 in range(1 << 4):
 
             q10 = q10b | (q9q10mask[k10] & 0x08000004)
-
             m10 = (md5.crs((Q[14] - q10) % (1 << 32), 17)) % (1 << 32)
 
             q9 = q9b | (q9q10mask[k10] & 0x00004200)
-
             m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
             aa = Q[24]
 

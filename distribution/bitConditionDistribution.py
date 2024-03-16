@@ -90,6 +90,7 @@ def main():
     bitDistributionQs = getBitDistribution(Qs)
     bitDistributionQ2s = []
     for Q2 in Q2s:
+        print(len(Q2))
         if Q2:
             print(len(Q2))
             print(len(Q2[0]))
@@ -109,7 +110,7 @@ def makeTables(bitDistributions):
     os.chdir(newDir)
     distributionFilePath = os.path.join(newDir, f"distribution_{now}.txt")
     bitcondFilePath = os.path.join(newDir, f"bitConditions_{now}.txt")
-    with open(distributionFilePath, "w+") as file, open(bitcondFilePath, "w+") as file2:
+    with (open(distributionFilePath, "w+") as file, open(bitcondFilePath, "w+") as file2):
         for bitDistribution in bitDistributions:
             file.write(f"Block {counter}:\n\n")
             file2.write(f"Block {counter}:\n\n")
@@ -122,13 +123,13 @@ def makeTables(bitDistributions):
                         file2.write(f"0")
                     elif i > 0 and elem == bitDistribution[i - 1][j]:
                         file2.write(f"^")
-                    elif i > 0 and (float(elem) + float(bitDistribution[i - 1][j])) == 1:
+                    elif i > 0 and 0.99999999999999 <= (float(elem) + float(bitDistribution[i - 1][j])) <= 1.00000000000001:
                         file2.write(f"!")
                     else:
                         file2.write(f".")
-                    if j % 4 == 3:
-                        file.write(f" ")
-                        file2.write(f" ")
+                    if j % 8 == 7:
+                        file.write(f"   ")
+                        file2.write(f"   ")
                 file.write(f"\n")
                 file2.write(f"\n")
             counter += 1

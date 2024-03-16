@@ -81,7 +81,7 @@ def find_block0(IV):
         block[0] = md5.md5_reverse_step(0, Q, 0xd76aa478, 7)
         block[6] = md5.md5_reverse_step(6, Q, 0xa8304613, 17)
         block[7] = md5.md5_reverse_step(7, Q, 0xfd469501, 22)
-        # calculating block[8], block[9], block[10], block[12], block[13] not necessary, changed later anyway
+        # Calculating block[8], block[9], block[10], block[12], block[13] not necessary here, changed later anyway
         block[11] = md5.md5_reverse_step(11, Q, 0x895cd7be, 22)
         block[14] = md5.md5_reverse_step(14, Q, 0xa679438e, 17)
         block[15] = md5.md5_reverse_step(15, Q, 0x49b40821, 22)
@@ -95,12 +95,11 @@ def find_block0(IV):
 
         counter = 0
         while counter < (1 << 7):
+            counter += 1
 
             q16 = Q[19]
 
             q17 = ((random.randint(0, (2 ** 32) - 1) & 0x3ffd7ff7) | (q16 & 0xc0008008)) ^ 0x40000000
-            counter += 1
-
             q18 = (md5.G(q17, q16, Q[18]) + tt18) & 0xFFFFFFFF
             q18 = (md5.cls(q18, 9) + q17) & 0xFFFFFFFF
             if 0x00020000 != ((q18 ^ q17) & 0xa0020000):
@@ -140,10 +139,8 @@ def find_block0(IV):
         q9backup = Q[12]
         tt21 = (md5.G(Q[23], Q[22], Q[21]) + Q[20] + 0xd62f105d) & 0xFFFFFFFF
 
-        # iterate over possible changes of q4
-        # while keeping all conditions on q1-q20 intact
-        # this changes m3, m4, m5 and m7
-
+        # Iterate over possible changes of q4 while keeping all conditions on q1-q20 intact
+        # This changes m3, m4, m5 and m7
         for counter2 in range(1 << 4):
 
             Q[7] = q4 ^ q4mask[counter2]
@@ -170,11 +167,9 @@ def find_block0(IV):
             tt12 = (md5.crs((Q[16] - Q[15]) % (1 << 32), 7) - 0x6b901122) % (1 << 32)
             tt13 = (md5.crs((Q[17] - Q[16]) % (1 << 32), 12) - md5.F(Q[16], Q[15], Q[14]) - 0xfd987193) % (1 << 32)
 
-            # iterate over possible changes of q9 and q10
-            # while keeping conditions on q1-q21 intact
-            # this changes m8, m9, m10, m12 and m13( and not m11!)
-            # the possible changes of q9 that also do not change m10 are used below
-
+            # Iterate over possible changes of q9 and q10 while keeping conditions on q1-q21 intact
+            # This changes m8, m9, m10, m12 and m13( and not m11!)
+            # The possible changes of q9 that also do not change m10 are used below
             for counter3 in range(1 << 3):
 
                 q10 = Q[13] ^ (q9q10mask[counter3] & 0x60)
@@ -211,9 +206,9 @@ def find_block0(IV):
                 block[10] = m10
                 block[13] = (tt13 - q10) % (1 << 32)
 
-                # iterate over possible changes of q9
+                # Tterate over possible changes of q9
                 # while keeping conditions on q1-q24 intact
-                # this changes m8, m9 and m12 (but not m10!)
+                # This changes m8, m9 and m12 (but not m10!)
                 for counter4 in range(1 << 16):
 
                     q9 = Q[12] ^ q9mask[counter4]
@@ -336,9 +331,7 @@ def find_block0(IV):
                         wang = False
 
                     stevens = True
-                    if (
-                            ((IHV1 ^ IHV2) >> 31) != 0 or
-                            ((IHV1 ^ IHV3) >> 31) != 0):
+                    if ((IHV1 ^ IHV2) >> 31) != 0 or ((IHV1 ^ IHV3) >> 31) != 0:
                         stevens = False
                     if (
                             (IHV3 & (1 << 25)) != 0 or

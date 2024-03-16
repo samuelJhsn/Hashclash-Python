@@ -47,7 +47,6 @@ import md5
 
 
 def find_block1_stevens_01(IV):
-    superCounter = 0
     block = [0] * 16
     Q = [IV[0], IV[3], IV[2], IV[1]] + [0] * 64
 
@@ -59,7 +58,6 @@ def find_block1_stevens_01(IV):
               for k in range(len(q9mask))]
 
     while True:
-        superCounter += 1
         aa = Q[3] & 0x80000000
 
         Q[5] = (random.randint(0, (2 ** 32) - 1) & 0x4db0e03e) | 0x32460441 | aa
@@ -175,11 +173,9 @@ def find_block1_stevens_01(IV):
         for k10 in range(1 << 5):
 
             q10 = q10b | (q9q10mask[k10] & 0x08000030)
-
             m10 = md5.crs((Q[14] - q10) % (1 << 32), 17)
 
             q9 = q9b | (q9q10mask[k10] & 0x80002000)
-
             m10 = (m10 - md5.F(q10, q9, Q[11]) - tt10) % (1 << 32)
 
             aa = Q[24]
