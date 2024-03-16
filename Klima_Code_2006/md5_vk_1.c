@@ -27,29 +27,7 @@ It is forbidden to use it for commercial or malicious use.
 Further distribution is not allowed without my permission.
 
 Copyright: Vlastimil Klima, http://cryptography.hyperlink.cz
-
-  Note: I am very sorry, the program is very bad. I am not a programmer.
-  On the other hand, there is a possibility to improve it and to speed up the collision search.
-
-  Version: 1.
-  
-	Changes from version 0: 
-	I tried to optimize the block 1. 
-	I added two new tunnels and new multi-message modification methods (MMMM) into the block 2.
-	
-	(one MMMM is prepared in extra conditions, not programmed:
-	on bits where (Q11=Q12 and Q9=Q10) it is possible to change both the bits Q11(Q12) 
-	without disturbing x11, Q[17..21])
-	
-	On a slow notebook (Pentium, 1.6 GHz) it takes roughly
-	31 seconds per collision in average	  (block 1: 30 seconds ,  block 2: 1 second).
-
-	Note: For debugging I used the parameter
-	md5tunnel.exe 47777A2B
-	it gives collisions very quickly...
-
-  */
-
+*/
 
 #include  <stdlib.h>
 #include  <conio.h>

@@ -1,3 +1,7 @@
+/*
+Copyright: Vlastimil Klima, http://cryptography.hyperlink.cz
+*/
+
 #ifndef __MD5_H__
 #define __MD5_H__ 1
 #ifdef __cplusplus

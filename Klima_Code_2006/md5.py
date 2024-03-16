@@ -50,7 +50,6 @@ def compress(ihv, message):
     for blockN in range(0, int(len(message) / 16)):
         block = message[(blockN * 16 + 0):(blockN * 16 + 16)]
         state = deque(ihv.copy())
-        # print(f"Before: {state}")
         for i in range(64):
 
             if i <= 15:
@@ -66,7 +65,6 @@ def compress(ihv, message):
             else:
                 state[0] = md5_step(I, state[0], state[1], state[2], state[3], block[block_indexes[i]], AC[i], RC[i])
                 state.rotate(1)
-            # print(f"Step {i}: {state}")
 
         for i, _ in enumerate(ihv):
             ihv[i] = ((state[i] + ihv[i]) & 0xFFFFFFFF)
