@@ -30,8 +30,7 @@ def main():
     collisionsPerProcess = []
     Qs = []
     Q2s = [[], [], [], [], []]
-    block1Times = []
-    block2Times = [[], [], [], [], [], []]
+    blockTimes = []
     try:
         with open(sys.argv[1], "r") as log:
             next(log)
@@ -73,8 +72,7 @@ def main():
                 else:
                     Q2s[block2Type] += [splitLine[6][4:].split(", ")[4:]]
 
-                block1Times += [float(splitLine[7].split(": ")[1])]
-                block2Times[block2Type] += [float(splitLine[8].split(": ")[1])]
+                blockTimes += [float(splitLine[7].split(": ")[1]) + float(splitLine[8].split(": ")[1])]
 
     except FileNotFoundError as fileNoFoErr:
         print(f"{fileNoFoErr}")
@@ -85,15 +83,14 @@ def main():
     for process in collisionsPerProcess:
         averageCollisionTime += process[1] * process[2]
     averageCollisionTime /= collisionCount
+    print(f"Minimum collision time: {min(blockTimes)}")
+    print(f"Maximum collision time: {max(blockTimes)}")
     print(f"Average collision time for all {collisionCount} collisions: {averageCollisionTime}")
 
     bitDistributionQs = getBitDistribution(Qs)
     bitDistributionQ2s = []
     for Q2 in Q2s:
-        print(len(Q2))
         if Q2:
-            print(len(Q2))
-            print(len(Q2[0]))
             bitDistributionQ2s += [getBitDistribution(Q2)]
     makeTables([bitDistributionQs, *bitDistributionQ2s])
 
@@ -136,7 +133,6 @@ def makeTables(bitDistributions):
             file.write(f"\n\n")
             file2.write(f"\n\n")
     file.close()
-    print("Done")
 
 
 if __name__ == '__main__':

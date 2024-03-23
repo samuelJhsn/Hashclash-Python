@@ -60,6 +60,7 @@ def find_block1_stevens_00(IV):
     while True:
         aa = Q[3] & 0x80000000
 
+        # Q[4] = 0x02020801 | (Q[3] & 0x80000000) | (random.randrange(0, (2 ** 32)) & 0x7dfdf7be)
         Q[5] = (random.randrange(0, (2 ** 32)) & 0x49a0e73e) | 0x221f00c1 | aa
         Q[6] = (random.randrange(0, (2 ** 32)) & 0x0000040c) | 0x3fce1a71 | (Q[5] & 0x8000e000)
         Q[7] = (random.randrange(0, (2 ** 32)) & 0x00000004) | (0xa5f281a2 ^ (Q[6] & 0x80000008))

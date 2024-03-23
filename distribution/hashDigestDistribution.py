@@ -13,6 +13,7 @@ from operator import add
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import statsmodels.api as sm
 
 def getHashes(compRoomStart, compRoomEnd, hashFunction):
     randomBitString = True
@@ -121,7 +122,6 @@ def getRandomWalkStats(hashes, hashFunction):
     yticks = list(range(0, -yLimit, -5)) + list(range(0, yLimit, 5))[1:]
     plt.xticks(xticks)
     plt.yticks(yticks)
-
     plt.savefig(id)
 
     randomWalkStats = [round((np.mean([elem for elem in allZeroPos if elem != 0])), 1),
